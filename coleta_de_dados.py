@@ -1,42 +1,108 @@
-#%%
-def coletar_dados():
-    # This Python 3 environment comes with many helpful analytics libraries installed
-    # It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
-    # For example, here's several helpful packages to load
-
-    import numpy as np # linear algebra
-    import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-
-    # Input data files are available in the read-only "../input/" directory
-    # For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
-    import os
-
-    import kagglehub
-    DATASET_PATH = os.environ.get("DATASET_PATH") or kagglehub.dataset_download(
-        'hkayan/industrial-robotic-arm-imu-data-casper-1-and-2') + '/'
-
-    for dirname, _, filenames in os.walk('/kaggle/input'):
-        for filename in filenames:
-            print(os.path.join(dirname, filename))
+import os
+import pandas as pd
+import kagglehub
 
 
-    # You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using "Save & Run All"
-    # You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session
+class Dataset:
+    """Classe para gerenciar coleta e carregamento de dados de IMU de braço robótico"""
+    
+    def __init__(self, dataset_name='hkayan/industrial-robotic-arm-imu-data-casper-1-and-2'):
+        """
+        Inicializa o Dataset
+        
+        Args:
+            dataset_name: Nome do dataset no Kaggle
+        """
+        self.dataset_name = dataset_name
+        self.dataset_path = self._obter_caminho_dataset()
+        self.df_normal = None
+        self.df_faulty = None
+        self.df_combined = None
+        
+    def _obter_caminho_dataset(self):
+        """Obtém o caminho do dataset (local ou download)"""
+        caminho = os.environ.get("DATASET_PATH")
+        if not caminho:
+            caminho = kagglehub.dataset_download(self.dataset_name) + '/'
+        return caminho
+    
+    def listar_arquivos(self, caminho='/kaggle/input'):
+        """Lista todos os arquivos disponíveis no diretório"""
+        arquivos = []
+        for dirname, _, filenames in os.walk(caminho):
+            for filename in filenames:
+                arquivo_completo = os.path.join(dirname, filename)
+                print(arquivo_completo)
+                arquivos.append(arquivo_completo)
+        return arquivos
+    
+    def carregar_dados(self, arquivo_normal='IMU_10Hz.csv', 
+                       arquivo_faulty='IMU_hitting_platform.csv'):
+        """
+        Carrega os dados normais e com falha
+        
+        Args:
+            arquivo_normal: Nome do arquivo com dados normais
+            arquivo_faulty: Nome do arquivo com dados com falha
+            
+        Returns:
+            tuple: (df_normal, df_faulty)
+        """
+        # Carrega dados normais
+        self.df_normal = pd.read_csv(self.dataset_path + arquivo_normal)
+        self.df_normal['label'] = 0
+        
+        # Carrega dados com falha
+        self.df_faulty = pd.read_csv(self.dataset_path + arquivo_faulty)
+        self.df_faulty['label'] = 1
+        
+        return self.df_normal, self.df_faulty
+    
+    def combinar_dados(self):
+        """
+        Combina os datasets normal e faulty em um único DataFrame
+        
+        Returns:
+            pd.DataFrame: Dataset combinado
+        """
+        if self.df_normal is None or self.df_faulty is None:
+            raise ValueError("Carregue os dados primeiro usando carregar_dados()")
+        
+        self.df_combined = pd.concat([self.df_normal, self.df_faulty], 
+                                      ignore_index=True)
+        return self.df_combined
+    
+    def obter_info(self):
+        """Retorna informações sobre os datasets carregados"""
+        info = {}
+        if self.df_normal is not None:
+            info['normal'] = {
+                'shape': self.df_normal.shape,
+                'colunas': list(self.df_normal.columns)
+            }
+        if self.df_faulty is not None:
+            info['faulty'] = {
+                'shape': self.df_faulty.shape,
+                'colunas': list(self.df_faulty.columns)
+            }
+        if self.df_combined is not None:
+            info['combined'] = {
+                'shape': self.df_combined.shape,
+                'distribuicao_labels': self.df_combined['label'].value_counts().to_dict()
+            }
+        return info
 
-    import re
-    normalPattern = "IMU_(.*)Hz.csv"
 
-    normal = ("IMU_10Hz.csv", ("label", 0))
-    faulty =("IMU_hitting_platform.csv", ("label", 1))
-
-    df = pd.read_csv(DATASET_PATH + normal[0])
-    df['label'] = 0
-
-    faultydf = pd.read_csv(DATASET_PATH+faulty[0])
-    faultydf['label'] = 1
-
-    return df, faultydf
-
-# %%
+# Exemplo de uso:
+""" if __name__ == "__main__":
+    # Instancia o dataset
+    dataset = Dataset()
+    
+    # Carrega os dados
+    df_normal, df_faulty = dataset.carregar_dados()
+    
+    # Combina os dados (opcional)
+    df_combined = dataset.combinar_dados()
+    
+    # Obtém informações
+    print(dataset.obter_info()) """
