@@ -18,6 +18,8 @@ class Dataset:
         self.df_normal = None
         self.df_faulty = None
         self.df_combined = None
+        self._carregar_dados()
+        self._combinar_dados()
         
     def _obter_caminho_dataset(self):
         """Obtém o caminho do dataset (local ou download)"""
@@ -36,7 +38,7 @@ class Dataset:
                 arquivos.append(arquivo_completo)
         return arquivos
     
-    def carregar_dados(self, arquivo_normal='IMU_10Hz.csv', 
+    def _carregar_dados(self, arquivo_normal='IMU_10Hz.csv', 
                        arquivo_faulty='IMU_hitting_platform.csv'):
         """
         Carrega os dados normais e com falha
@@ -58,7 +60,7 @@ class Dataset:
         
         return self.df_normal, self.df_faulty
     
-    def combinar_dados(self):
+    def _combinar_dados(self):
         """
         Combina os datasets normal e faulty em um único DataFrame
         
@@ -66,7 +68,7 @@ class Dataset:
             pd.DataFrame: Dataset combinado
         """
         if self.df_normal is None or self.df_faulty is None:
-            raise ValueError("Carregue os dados primeiro usando carregar_dados()")
+            raise ValueError("Carregue os dados primeiro usando _carregar_dados()")
         
         self.df_combined = pd.concat([self.df_normal, self.df_faulty], 
                                       ignore_index=True)
@@ -93,16 +95,3 @@ class Dataset:
         return info
 
 
-# Exemplo de uso:
-""" if __name__ == "__main__":
-    # Instancia o dataset
-    dataset = Dataset()
-    
-    # Carrega os dados
-    df_normal, df_faulty = dataset.carregar_dados()
-    
-    # Combina os dados (opcional)
-    df_combined = dataset.combinar_dados()
-    
-    # Obtém informações
-    print(dataset.obter_info()) """
