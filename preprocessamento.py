@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import sklearn
 from analise_exploratoria_de_dados import EDA
+import time
 
 df=None
 class Preprocessing:
@@ -28,7 +29,6 @@ class Preprocessing:
     @staticmethod
     def _train_test_split(df:pd.DataFrame, trainPer=0.6,valPer=0.05, testPer=0.35):
         assert(trainPer + valPer + testPer <= 1.0)
-
         size = df.shape[0]
 
         traindf = df.iloc[:int(size*trainPer)]
@@ -46,29 +46,29 @@ class Preprocessing:
         windows = np.stack([arr[s:s+length] for s in starts], axis=0) #semelhante a np.array
         return windows
 
-    def run(self, WINDOW_SIZE=60, WINDOW_OVERLAP=10) -> list[np.ndarray]:
+    def run(self,x_splits=[0.6,0.05,0.35],y_splits=[0.0,0.1,0.9], window_size=60, window_overlap=10) -> list[np.ndarray]:
         """Executa o preprocessamento completo e retorna os conjuntos preprocessados, sem exibir nada
         Args:
-            WINDOW_SIZE: tamanho da janela em samples continuas
-            WINDOW_OVERLAP: interseção entre uma janela e a seguinte ou à antecessora
+            window_size: tamanho da janela em samples continuas
+            window_overlap: interseção entre uma janela e a seguinte ou à antecessora
 
         Returns:
             X_train, X_val, X_test, Y_val, Y_test: Windows já achatadas, com dados já normalizados, normalizados e limpos
         """
+        print("Preprocessamento iniciado")
+        start = time.time_ns()*1000
 
         X_train, X_val,X_test = self._train_test_split(self.df_normal)
 
-        _, Y_val,Y_test = self._train_test_split(self.df_faulty,trainPer=0,valPer=0.1,testPer=0.9)
+        _, Y_val,Y_test = self._train_test_split(self.df_faulty,trainPer=y_splits[0],valPer=y_splits[1],testPer=y_splits[2])
 
 
-        WINDOW_SIZE, WINDOW_OVERLAP = 60, 10
+        X_train_w = self._getFixedWindows(X_train, window_size, window_overlap)
+        X_val_w = self._getFixedWindows(X_val,  window_size, window_overlap)
+        X_test_w  = self._getFixedWindows(X_test,  window_size, window_overlap)
 
-        X_train_w = self._getFixedWindows(X_train, WINDOW_SIZE, WINDOW_OVERLAP)
-        X_val_w = self._getFixedWindows(X_val,  WINDOW_SIZE, WINDOW_OVERLAP)
-        X_test_w  = self._getFixedWindows(X_test,  WINDOW_SIZE, WINDOW_OVERLAP)
-
-        Y_val_w  = self._getFixedWindows(Y_val, WINDOW_SIZE, WINDOW_OVERLAP)
-        Y_test_w  = self._getFixedWindows(Y_test, WINDOW_SIZE, WINDOW_OVERLAP)
+        Y_val_w  = self._getFixedWindows(Y_val, window_size, window_overlap)
+        Y_test_w  = self._getFixedWindows(Y_test, window_size, window_overlap)
 
 
         X_train_flat = X_train_w.reshape(X_train_w.shape[0], -1)
@@ -78,9 +78,11 @@ class Preprocessing:
         Y_val_flat = Y_val_w.reshape(Y_val_w.shape[0], -1)
         Y_test_flat  = Y_test_w.reshape(Y_test_w.shape[0], -1)
 
+
+        print(f"Preprocessamento concluído em {(time.time_ns()*1000 - start)/1000:.3f}s")
         return [X_train_flat,X_test_flat,X_val_flat, Y_val_flat, Y_test_flat]
         
 
 # Exemplo de uso:
-#pp = Preprocessing()
-#pp.run()
+pp = Preprocessing()
+pp.run()
