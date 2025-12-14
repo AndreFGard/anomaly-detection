@@ -392,9 +392,6 @@ Breve apresentação do contexto do trabalho, problema/tema a ser abordado, solu
 
 % no keywords
 
-
-
-
 % For peer review papers, you can put extra information on the cover
 % page as needed:
 % \ifCLASSOPTIONpeerreview
@@ -414,15 +411,29 @@ Deverá abordar a motivação, justificativa e principais contribuições do tra
     \item \textbf{Relevância prática do problema:} Por que ele é interessante?
 \end{itemize}
 
+Os dados analisados neste trabalho são provenientes de sensores inerciais responsáveis por capturar diferentes aspectos do movimento do braço robótico. O acelerômetro mede tanto a aceleração linear quanto a influência da gravidade, sendo sensível a vibrações e impactos abruptos, que podem indicar colisões ou perturbações externas. O giroscópio fornece informações sobre a velocidade angular das articulações, sendo particularmente útil para identificar variações na agilidade do movimento, como atrasos ou oscilações decorrentes de cargas adicionais. O magnetômetro, por sua vez, mede a orientação do sistema em relação ao campo magnético terrestre, apresentando variações mais lentas e sendo sensível a interferências magnéticas inesperadas.
+
+Como o robô executa tarefas de forma sequencial e repetitiva, os sinais dos sensores apresentam um comportamento aproximadamente periódico, refletindo os ciclos de movimento do manipulador. Alterações nesse padrão, como mudanças na forma de onda, atrasos temporais ou picos abruptos, podem estar associadas a condições anômalas de operação.
+
+O conjunto de dados utilizado neste trabalho é proveniente de experimentos realizados com um braço robótico industrial Universal Robot UR3e, em um ambiente de manufatura controlado. Os dados foram coletados com o objetivo de estudar o comportamento do manipulador durante a execução de tarefas típicas da indústria, incluindo aparafusamento, pintura e operações de \textit{pick-and-place}. O dataset é disponibilizado publicamente e foi obtido a partir do repositório associado ao projeto de pesquisa apresentado no IEEE PerCom 2023, sendo amplamente utilizado em estudos relacionados à detecção de anomalias em sistemas robóticos.
+
+As amostras do conjunto de dados consistem em séries temporais de sensores inerciais (IMU), incluindo sinais de acelerômetro, giroscópio e magnetômetro, coletados a uma frequência nominal de 10~Hz. O dataset contempla tanto condições normais de operação quanto cenários de falha mecânica simulada, como colisões com a plataforma, impactos externos e variações artificiais de carga, permitindo a análise comparativa entre padrões normais e anômalos de funcionamento do robô. A diversidade de tarefas, aliada à presença de diferentes tipos de anomalias, torna o conjunto de dados adequado para a avaliação de técnicas de análise exploratória, pré-processamento e aprendizado de máquina aplicadas à detecção de anomalias.
 
 \section{Análise de Dados e Feature Engineering}
-Deverá abordar as seguintes etapas referentes a análise dos dados.
 
 \subsection{Análise Exploratória dos Dados}
-Nesta subseção devem ser apresentadas características do dataset escolhido bem como a fonte deste. Além disso abordar os seguintes tópicos.
 
 \subsubsection{Análise Exploratória Estrutural}
-Deverá conter informações básicas do dataset, tipos de dados, informações detalhadas, estatísticas descritivas, análise de valores únicos, entre outros.
+
+A análise exploratória estrutural foi conduzida com o objetivo de compreender a organização e os tipos de atributos presentes no conjunto de dados. O dataset é composto por séries temporais de sensores inerciais, contendo variáveis numéricas contínuas associadas às medições de acelerômetro, giroscópio e magnetômetro, além de uma coluna temporal que representa o instante de coleta de cada amostra.
+
+Cada observação corresponde a uma leitura dos sensores em um determinado instante de tempo, sendo os dados organizados de forma sequencial. A variável temporal é representada por valores inteiros de alta resolução, indicando registros em escala de nanosegundos, o que reforça o caráter temporal do problema. No entanto, com o objetivo de facilitar a interpretação e a análise de integridade temporal, os valores foram convertidos para milissegundos, mantendo a proporcionalidade entre as amostras e reduzindo a magnitude numérica dos registros. Adicionalmente, o conjunto de dados inclui uma variável indicativa da condição de operação do robô, utilizada como rótulo para diferenciar entre comportamento normal e anômalo.
+
+Durante a análise estrutural, foi identificada a presença de uma coluna textual associada à identificação do sensor, a qual apresentou valor constante em todas as observações. Por não agregar informação discriminativa ao problema de detecção de anomalias, essa variável foi removida do conjunto de dados. Adicionalmente, foi realizada a verificação de duplicidade nos registros temporais, não sendo identificadas amostras com timestamps repetidos. Esse resultado indica consistência na indexação temporal das observações.
+
+\subsubsection{Informações básicas}
+O conjunto de dados analisado é composto por 874.937 amostras e 11 atributos após a etapa inicial de pré-processamento. Todas as variáveis de sensores são numéricas contínuas do tipo \textit{float}, enquanto a variável alvo é representada por valores inteiros binários. O volume total de memória ocupado pelo dataset é de aproximadamente 73 MB, caracterizando um conjunto de dados de grande porte.
+
 
 \subsubsection{Análise de Valores Faltantes e \textit{Outliers}}
 Deverá conter a identificação de valores faltantes e outliers, visualizações de apoio caso necessário, além de análises dos mecanismos. 
