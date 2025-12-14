@@ -533,8 +533,16 @@ class EDA:
                 'Estado': ['Normal'] * len(data_norm) + ['Falha'] * len(data_fail)
             })
             
-            sns.violinplot(data=df_temp, x='Estado', y='Valor', ax=axes[i], 
-                           palette={'Normal': '#1f77b4', 'Falha': '#d62728'}, split=False)
+            sns.violinplot(
+                data=df_temp, 
+                x='Estado', 
+                y='Valor', 
+                ax=axes[i], 
+                palette={'Normal': '#1f77b4', 'Falha': '#d62728'}, 
+                split=False,
+                legend=False,
+                hue='Estado'
+            )
             
             axes[i].set_title(f'{sensor}\nKS Stat: {ks_stat:.3f}', fontsize=10, fontweight='bold')
             axes[i].set_xlabel('')
