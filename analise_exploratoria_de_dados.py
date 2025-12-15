@@ -1,4 +1,4 @@
-# %%
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -41,7 +41,7 @@ class EDA:
             arquivo_faulty: Nome do arquivo com dados com falha
         """
         # Carrega os dados
-        self.df_normal, self.df_faulty = self.dataset.carregar_dados(
+        self.df_normal, self.df_faulty = self.dataset._carregar_dados(
             arquivo_normal, arquivo_faulty
         )
         
@@ -344,6 +344,16 @@ class EDA:
         
         return self.df_normal_resampled, self.df_faulty_resampled
     
+    def _normalizar_df(self,df,fit_scaler=True,scaler=None):
+        """Normaliza e retorna apenas um df"""
+        if fit_scaler:
+            scaler = RobustScaler()
+            scaler.fit(df)
+            df_scaled = scaler.transform(df)
+        else:
+            df_scaled = scaler.transform(df) #type:ignore
+        return df_scaled,scaler
+
     def aplicar_normalizacao(self):
         """Aplica normalização RobustScaler e StandardScaler nos dados reamostrados"""
         if self.df_normal_resampled is None or self.df_faulty_resampled is None:
@@ -681,7 +691,7 @@ class EDA:
         plt.show()
     
     def executar_pipeline_completo(self, mostrar_diagnostico=True, mostrar_analise_univariada=True,
-                                   mostrar_sensores=False, aplicar_filtro=False):
+                                   mostrar_sensores=False, mostrar_savgol=False, aplicar_filtro=False):
         """
         Executa o pipeline completo de pré-processamento e análise
         
@@ -760,7 +770,7 @@ class EDA:
             print("ETAPA 6: APLICAÇÃO DE FILTRO SAVITZKY-GOLAY")
             print("="*60)
             df_filtered = self.aplicar_filtro_savgol(self.df_normal)
-            self.plot_raw_vs_smooth(df_filtered)
+            if mostrar_savgol: self.plot_raw_vs_smooth(df_filtered)
             resultados['df_filtered'] = df_filtered
         
         print("\n" + "="*60)
@@ -801,4 +811,3 @@ class EDA:
     # df_filtered = eda.aplicar_filtro_savgol(eda.df_normal)
     # eda.plot_raw_vs_smooth(df_filtered)
 
-#%%
