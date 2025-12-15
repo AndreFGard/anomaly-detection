@@ -344,6 +344,16 @@ class EDA:
         
         return self.df_normal_resampled, self.df_faulty_resampled
     
+    def _normalizar_df(self,df,fit_scaler=True,scaler=None):
+        """Normaliza e retorna apenas um df"""
+        if fit_scaler:
+            scaler = RobustScaler()
+            scaler.fit(df)
+            df_scaled = scaler.transform(df)
+        else:
+            df_scaled = scaler.transform(df) #type:ignore
+        return df_scaled,scaler
+
     def aplicar_normalizacao(self):
         """Aplica normalização RobustScaler e StandardScaler nos dados reamostrados"""
         if self.df_normal_resampled is None or self.df_faulty_resampled is None:
