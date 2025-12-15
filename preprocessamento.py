@@ -11,7 +11,7 @@ df=None
 class Preprocessing:
     eda= EDA()
 
-    def __init__(self,arquivo_normal= "IMU_10Hz.csv", arquivos_anomalos=["IMU_hitting_platform.csv", "IMU_hitting_arm.csv"], filtro_savgol=True):
+    def __init__(self,arquivo_normal= "IMU_10Hz.csv", arquivos_anomalos=["IMU_hitting_platform.csv"], filtro_savgol=True):
         """Classe que carrega e prepara os dados. Ao ser instanciada, apenas fará
         preparações que não serão customizadas (isto é, sem hiperparâmetros).
         
@@ -51,6 +51,19 @@ class Preprocessing:
             novos_anomalos.append(anomalo)
         anomalos = novos_anomalos
 
+
+        def merge_smooth_columns(df):
+            # for each column, if it contains _smooth, replace the original column with it
+            for col in df.columns:
+                if col.endswith('_smooth'):
+                    original_col = col[:-7]
+                    df[original_col] = df[col]
+                    df.drop(columns=[col], inplace=True)
+            return df  
+        normal = merge_smooth_columns(normal)
+        anomalos = [merge_smooth_columns(anomalo) for anomalo in anomalos]
+
+
         normal = eda.resampling_and_interpolate(normal, arquivo_normal)
         anomalos = [eda.resampling_and_interpolate(anomalo, nome) for anomalo,nome in zip(anomalos,arquivos_anomalos)]
 
@@ -79,6 +92,7 @@ class Preprocessing:
 
         starts = range(0, n - length + 1, step)
         windows = np.stack([arr[s:s+length] for s in starts], axis=0) #semelhante a np.array
+
         return windows
     
     
@@ -149,6 +163,6 @@ class Preprocessing:
         
 
 # Exemplo de uso:
-pp = Preprocessing()
-pp.preprocessar_todos()
-pp.anomalo_splits[1][1].shape
+# pp = Preprocessing()
+# pp.preprocessar_todos()
+# pp.anomalo_splits[1][0].shape
