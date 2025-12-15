@@ -1,3 +1,4 @@
+from curses import newwin, window
 from typing import no_type_check
 from matplotlib.pylab import normal
 import pandas as pd
@@ -85,8 +86,9 @@ class Preprocessing:
         return traindf,valdf,testdf
     
     @staticmethod
-    def _getFixedWindows(df:pd.DataFrame, length, overlap, drop_incomplete=True):
-        arr = df.values
+    def _getFixedWindows(df:pd.DataFrame|np.ndarray, length, overlap):
+        #drop incomplete implícito
+        arr: np.ndarray = df.values if isinstance(df, pd.DataFrame) else df
         step = length - overlap
         n = arr.shape[0]
 
@@ -160,6 +162,20 @@ class Preprocessing:
                                              for anomalo in self.anomalos]
     
         return None
+    
+    @staticmethod
+    def resizeFlattenedWindow( flattened_windows:np.ndarray, new_window_size:int, window_overlap:int, dimensionsPerSample=9) -> np.ndarray:
+        """Redimensiona  as janelas (já) achatadas para um novo tamanho"""
+        assert (len(flattened_windows.shape) == 2)
+        if window_overlap >= new_window_size:
+            window_overlap = new_window_size//2
+        
+        samplesPerWindow = flattened_windows.shape[1]//dimensionsPerSample
+        samples = flattened_windows.reshape(-1, dimensionsPerSample)
+        
+        newWindows = Preprocessing._getFixedWindows(samples, new_window_size, window_overlap)
+        flattenedNewWindows = newWindows.reshape(newWindows.shape[0], -1)
+        return flattenedNewWindows
         
 
 # Exemplo de uso:
