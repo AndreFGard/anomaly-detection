@@ -83,7 +83,10 @@ class Dataset:
             lista_dfs.append(temp_df)
             print(f"-> Adicionado: {arquivo} ({len(temp_df)} linhas)")
         
-        df, df_val, df_test = self.split_train_val_test()
+        self.lista_dfs_anomaly = lista_dfs
+        
+        df_train, df_val, df_test = self.split_train_val_test()
+        
         # Junta todos os arquivos da lista em um só DataFrame
         self.df_faulty = df_val[df_val['label'] == 1].copy()
         self.lista_dfs_anomaly = [df for scenario, df in self.df_faulty.groupby('scenario')]
