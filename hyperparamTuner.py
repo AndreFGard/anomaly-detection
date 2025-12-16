@@ -102,11 +102,9 @@ class BaseHyperParamTuner(ABC):
         for window_params in window_grid:
             print(f"Processing Window Config: {window_params}")
             
-            try:
-                Xtr, validationX, validationLabels = self._prepare_data(window_params)
-            except ValueError as e:
-                print(f"Skipping configuration due to error: {e}")
-                continue
+
+            Xtr, validationX, validationLabels = self._prepare_data(window_params)
+
 
             for modelParams in self._expandedModelGrid:
                 trainer = Trainer_factory(**modelParams)
