@@ -1,4 +1,4 @@
-# %%
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -30,40 +30,51 @@ class EDA:
         self.df_faulty_standard_scaled = None
         self.scaler_robust = None
         self.scaler_standard = None
+        self.lista_dfs_anomaly = []
+        self.dict_scenarios = {}
+        self.faultydfs_resampled = {}
         
-    def carregar_e_preparar_dados(self, arquivo_normal='IMU_10Hz.csv', 
-                                   arquivo_faulty='IMU_hitting_platform.csv'):
+    def carregar_e_preparar_dados(self, arquivo_normal='IMU_10Hz.csv'):
         """
-        Carrega e prepara os dados para análise
+        Carrega e prepara os dados para análise.
+        Carrega dados normais e todos os 4 tipos de anomalias disponíveis.
         
         Args:
             arquivo_normal: Nome do arquivo com dados normais
-            arquivo_faulty: Nome do arquivo com dados com falha
+            
+        Returns:
+            tuple: (df_normal, df_faulty)
         """
-        # Carrega os dados
-        self.df_normal, self.df_faulty = self.dataset.carregar_dados(
-            arquivo_normal, arquivo_faulty
-        )
+        # Os dados já foram carregados no __init__ do Dataset
+        # Apenas referencia os DataFrames já existentes
+        self.df_normal = self.dataset.df_normal
+        self.df_faulty = self.dataset.df_faulty # não será usado agora, ele será o concat do resampling de cada df_anomaly
+        self.lista_dfs_anomaly = self.dataset.lista_dfs_anomaly
+        self.dict_scenarios = {df['scenario'].iloc[0] : df for df in self.lista_dfs_anomaly}
         
         # Conversões e limpezas iniciais
         print("\nConvertendo `time` de nanossegundos para milissegundos")
         self.df_normal['time'] = self.df_normal['time'].map(lambda x: x/1e6)
         self.df_faulty['time'] = self.df_faulty['time'].map(lambda x: x/1e6)
         
-        print("\nRemovendo a coluna `name` pois não agrega valor preditivo")
-        if 'name' in self.df_normal.columns:
-            self.df_normal = self.df_normal.drop(columns=['name'])
-        if 'name' in self.df_faulty.columns:
-            self.df_faulty = self.df_faulty.drop(columns=['name'])
+        print("\nRemovendo a coluna `name` e `scenario` em df_normal pois não agrega valor preditivo")
+        cols_to_drop = ['name', 'scenario']
+        self.df_normal = self.df_normal.drop(columns=cols_to_drop)
+
+        for scenario_name in self.dict_scenarios:
+            self.dict_scenarios[scenario_name] = self.dict_scenarios[scenario_name].drop(columns=cols_to_drop)
+            self.dict_scenarios[scenario_name]['time'] = (self.dict_scenarios[scenario_name]['time'].map(lambda x: x/1e6))
         
         print("\nIdentificando duplicatas")
-        print(f"Duplicatas de Tempo: {self.df_normal['time'].duplicated().any()}")
+        print(f"[Normal] Duplicatas de Tempo: {self.df_normal['time'].duplicated().any()}")
+        for scenario_name in self.dict_scenarios:
+            print(f"[{scenario_name}] duplicatas de tempo: {self.dict_scenarios[scenario_name]['time'].duplicated().any()}")
         
         return self.df_normal, self.df_faulty
     
     def executar_analise_completa(self):
         """Executa a análise exploratória completa"""
-        if self.df_normal is None or self.df_faulty is None:
+        if self.df_normal is None or self.dict_scenarios is {}:
             raise ValueError("Carregue os dados primeiro usando carregar_e_preparar_dados()")
         
         print("""## Análise Exploratória Estrutural [Classe Normal]
@@ -76,28 +87,43 @@ class EDA:
         # Análise estrutural
         self.analise_estrutural_sensores(self.df_normal)
         
-        print("""\n### Análise de Integridade Temporal
-        - 10Hz é uma frequência baixa para vibrações mecânicas finas, mas aceitável para movimentos macroscópicos de braços robóticos.
-        - Jitter alto (em torno de 20ms), o intervalo entre leituras varia muito. Possivelmente irá introduzir ruído ao utilizar Redes Neurais (CNN/LSTM).
-        - Existem 429 momentos onde o sistema perde pacotes, com um gap máximo de 342ms, isso quebra a continuidade da janela deslizante. Será necessário fazer um Resampling para forçar um passo de tempo fixo (ex: interpolar para 100ms exatos) antes de alimentar o modelo.
-
-        ## Análise de valores únicos e constantes
-        - A coluna `name` tem apenas 1 valor único e é irrelevante para o problema de detecção de anomalias, ela não agrega valor preditivo. Será necessário fazer um drop da coluna.
-        - `gyroY` tem 18% de zeros, o braço robótico passa muito tempo parado (idle). Como 18% é um valor relativamente alto, pode ser considerado definir "estar parado" como um comportamnto Normal (considerar "Zero" como classe Normal).
-        - `magX` possui baixa variablidade, pode ser recomendado testar treinar com e sem ele (feature selection).
-
-        ## Análise das estatísticas descritivas
-        - O desvio padrão de `accZ` é muito baixo comparado aos outros, possuindo baixa informação preditiva. É um candidato a ser removido se precisar reduzir dimensionalidade (feature selection).
-        - A mediana de `gyroY` = 0 confirma que o robô passa a maior parte do tempo parado ou em movimento linear constante (sem rotação). No entanto, uma curtose de 17 é altíssima, isso significa que a distribuição é super pontuda, o que provavelmente acontece é que o robô fica parado quase o tempo todo, mas quando se move, faz movimentos bruscos de início/fim de tarefa. Por isso, qualquer alteração nesse padrão de picos (ex: picos menores = braço lento; picos maiores = colisão) será o principal indicador de anomalia.
-        - Devido à alta curtose (gyroY) e outliers naturais (máximos de 100+ no gyro), a normalização padrão irá falhar, pois o StandardScaler (Z-score) usa a média e o desvio padrão. Como o desvio padrão é inflado pelos picos, os dados ficarão em um intervalo muito pequeno. A ideia seria usar RobustScaler que usa a mediana e o intervalo interquartil (IQR), ignorando os picos extremos no cálculo da escala, preservando a forma dos picos do giroscópio.""")
-        
         # Visualizações
-        print("\nVisualizando `gyroY`:")
-        self.plot_sensor(self.df_normal, col_sensor='gyroY')
-        print("O boxplot mostra que não deve-se remover os outliers pela regra de desvio padrão (3-sigma), pois serão apagados o movimento do robô sobrando só o ruído dele padrado")
+        sensores = ['accX', 'accY', 'accZ', 'gyroX', 'gyroY', 'gyroZ', 'magX', 'magY', 'magZ']
+        print("\n[NORMAL] Visualizando os Acelerômetros:")
+        for sensor in sensores[0:3]:
+            self.plot_sensor(self.df_normal, col_sensor=sensor)
+        print("\n[NORMAL] Visualizando os Giroscópios:")
+        for sensor in sensores[3:6]:
+            self.plot_sensor(self.df_normal, col_sensor=sensor)
+        print("\n[NORMAL] Visualizando os Magnetômetros:")
+        for sensor in sensores[6:9]:
+            self.plot_sensor(self.df_normal, col_sensor=sensor)
+            
+        print("""## Análise Exploratória Estrutural [Classe Anômala]
+        - Informações básicas do dataset
+        - Tipos de dados
+        - Informações detalhadas
+        - Estatísticas descritivas
+        - Análise de valores únicos""")
         
+        print(self.df_faulty['scenario'].value_counts())
+        
+        print("\nAnalisando por tipo de anomalia")
+        for scenario_name in self.dict_scenarios:
+            print(f"\n-------Análise Estrutural dos Sensores em {scenario_name}-------")
+            self.analise_estrutural_sensores(self.dict_scenarios[scenario_name])
+        
+        print("\nVisualizando `accZ` em diferentes anomalias")
+        for scenario_name in self.dict_scenarios:
+            print(f"\n-----------{scenario_name}-----------")
+            self.plot_sensor(self.dict_scenarios[scenario_name], col_sensor='accZ')
+            
         # Comparação Normal vs Falha
-        self.comparar_normal_vs_falha(self.df_normal, self.df_faulty, col_sensor='gyroY')
+        self.comparar_normal_vs_falha(self.df_normal, self.dict_scenarios['IMU_hitting_arm.csv'], col_sensor='accZ', anomalia='IMU_hitting_arm.csv')
+        self.comparar_normal_vs_falha(self.df_normal, self.dict_scenarios['IMU_earthquake.csv'], col_sensor='accZ', anomalia='IMU_earthquake.csv')
+        self.comparar_normal_vs_falha(self.df_normal, self.dict_scenarios['IMU_hitting_arm.csv'], col_sensor='gyroY', anomalia='IMU_hitting_arm.csv')
+        self.comparar_normal_vs_falha(self.df_normal, self.dict_scenarios['IMU_extra_weigth.csv'], col_sensor='accX', anomalia='IMU_extra_weigth.csv')
+        self.comparar_normal_vs_falha(self.df_normal, self.dict_scenarios['IMU_extra_weigth.csv'], col_sensor='accY', anomalia='IMU_extra_weigth.csv')
         
         # Análise de valores faltantes
         print("""\n## Análise de Valores Faltantes e Outliers
@@ -106,7 +132,8 @@ class EDA:
         - Análise dos mecanismos\n""")
         
         print(f"Quantidade de valores faltantes em df_normal: {self.df_normal.isnull().sum().sum()}")
-        print(f"Quantidade de Valores faltantes em df_faulty: {self.df_faulty.isnull().sum().sum()}")
+        for scenario_name in self.dict_scenarios:
+            print(f"[{scenario_name}] quantidade de Valores faltantes: {self.dict_scenarios[scenario_name].isnull().sum().sum()}")
         print(f"\nNão serão removidos os outliers estatísticos pois são movimentos reais")
     
     def analise_estrutural_sensores(self, df, time_col='time', label_col='label'):
@@ -258,7 +285,7 @@ class EDA:
         plt.tight_layout()
         plt.show()
     
-    def comparar_normal_vs_falha(self, df_normal, df_falha, col_sensor='gyroY'):
+    def comparar_normal_vs_falha(self, df_normal, df_falha, col_sensor, anomalia):
         """
         Plota comparativo visual entre operação Normal e Falha (Ataque/Colisão).
         """
@@ -276,21 +303,22 @@ class EDA:
         # Normal
         axes[0].plot(t_norm[mask_norm], df_normal.loc[mask_norm, col_sensor], 
                     color='#1f77b4', label='Normal', alpha=0.7, linewidth=1)
-        axes[0].set_title(f'Padrão Normal vs. Falha ({col_sensor})', fontsize=14, fontweight='bold')
+        axes[0].set_title(f'Padrão Normal vs. Falha - {anomalia} ({col_sensor})', fontsize=14, fontweight='bold')
         axes[0].set_ylabel('Valor do Sensor')
+        axes[0].set_xlabel('Tempo [s]')
         axes[0].legend(loc='upper left')
         axes[0].grid(True, alpha=0.3)
         
         # Falha (mesmo eixo para ver a diferença de magnitude)
         axes[0].plot(t_fail[mask_fail], df_falha.loc[mask_fail, col_sensor], 
-                    color='#d62728', label='Falha (Hitting Platform)', alpha=0.7, linewidth=1)
+                    color='#d62728', label='Falha', alpha=0.7, linewidth=1)
         axes[0].legend()
         
         # --- PLOT 2: COMPARAÇÃO DE DENSIDADE (KDE) ---
         # Mostra se a "forma" dos dados mudou
         sns.kdeplot(df_normal[col_sensor], ax=axes[1], color='#1f77b4', fill=True, label='Normal')
         sns.kdeplot(df_falha[col_sensor], ax=axes[1], color='#d62728', fill=True, label='Falha')
-        axes[1].set_title('Mudança na Distribuição de Probabilidade', fontsize=14, fontweight='bold')
+        axes[1].set_title(f'Mudança na Distribuição de Probabilidade - {anomalia}', fontsize=14, fontweight='bold')
         axes[1].set_yscale('log') # Log para ver as caudas
         axes[1].legend()
         axes[1].grid(True, alpha=0.3)
@@ -340,10 +368,23 @@ class EDA:
             raise ValueError("Carregue os dados primeiro usando carregar_e_preparar_dados()")
         
         self.df_normal_resampled = self.resampling_and_interpolate(self.df_normal, "df_normal")
-        self.df_faulty_resampled = self.resampling_and_interpolate(self.df_faulty, "df_faulty")
+        for name, df in self.dict_scenarios.items():
+            self.faultydfs_resampled[name] = self.resampling_and_interpolate(df, name)
+
+        self.df_faulty_resampled = pd.concat(self.faultydfs_resampled.values(), ignore_index=True)
         
         return self.df_normal_resampled, self.df_faulty_resampled
     
+    def _normalizar_df(self,df,fit_scaler=True,scaler=None):
+        """Normaliza e retorna apenas um df"""
+        if fit_scaler:
+            scaler = RobustScaler()
+            scaler.fit(df)
+            df_scaled = scaler.transform(df)
+        else:
+            df_scaled = scaler.transform(df) #type:ignore
+        return df_scaled,scaler
+
     def aplicar_normalizacao(self):
         """Aplica normalização RobustScaler e StandardScaler nos dados reamostrados"""
         if self.df_normal_resampled is None or self.df_faulty_resampled is None:
@@ -464,7 +505,7 @@ class EDA:
         plt.tight_layout()
         plt.show()
     
-    def analise_univariada_alvo(self, df_normal=None, df_falha=None):
+    def analise_univariada_alvo(self, df_normal=None, df_falha=None, anomalia=''):
         """
         Realiza a análise univariada comparando atributos vs. alvo (Normal vs Falha).
         Gera estatísticas de separação e visualizações.
@@ -533,16 +574,8 @@ class EDA:
                 'Estado': ['Normal'] * len(data_norm) + ['Falha'] * len(data_fail)
             })
             
-            sns.violinplot(
-                data=df_temp, 
-                x='Estado', 
-                y='Valor', 
-                ax=axes[i], 
-                palette={'Normal': '#1f77b4', 'Falha': '#d62728'}, 
-                split=False,
-                legend=False,
-                hue='Estado'
-            )
+            sns.violinplot(data=df_temp, x='Estado', y='Valor', ax=axes[i], 
+                           palette={'Normal': '#1f77b4', 'Falha': '#d62728'}, split=False, hue='Estado')
             
             axes[i].set_title(f'{sensor}\nKS Stat: {ks_stat:.3f}', fontsize=10, fontweight='bold')
             axes[i].set_xlabel('')
@@ -561,9 +594,9 @@ class EDA:
         # Ordenar pelo KS Statistic (Melhor separador primeiro)
         df_stats = df_stats.sort_values(by='KS_Statistic', ascending=False).reset_index(drop=True)
         
-        print("="*60)
-        print("RANKING DE IMPORTÂNCIA DOS SENSORES (Baseado em KS-Test)")
-        print("="*60)
+        print("="*80)
+        print(f"{anomalia} - RANKING DE IMPORTÂNCIA DOS SENSORES (Baseado em KS-Test)")
+        print("="*80)
         print("KS_Statistic: 1.0 = Separação Perfeita | 0.0 = Indistinguível")
         print("Variance_Ratio: > 1.0 = Falha aumentou a variabilidade")
         print("-" * 60)
@@ -688,8 +721,8 @@ class EDA:
         plt.tight_layout()
         plt.show()
     
-    def executar_pipeline_completo(self, mostrar_diagnostico=True, mostrar_analise_univariada=True,
-                                   mostrar_sensores=False, aplicar_filtro=False):
+    def executar_pipeline_completo(self, mostrar_diagnostico=False, mostrar_analise_univariada=True,
+                                   mostrar_sensores=False, mostrar_savgol=False, aplicar_filtro=False):
         """
         Executa o pipeline completo de pré-processamento e análise
         
@@ -752,8 +785,12 @@ class EDA:
             print("\n" + "="*60)
             print("ETAPA 4: ANÁLISE UNIVARIADA")
             print("="*60)
-            df_stats = self.analise_univariada_alvo()
-            resultados['stats_univariada'] = df_stats
+            
+            for name, anomaly_resampled in self.faultydfs_resampled.items():
+                print("\n"+"="*60)
+                print(f'ANOMALIA: {name}')
+                print("="*60)
+                df_stats = self.analise_univariada_alvo(self.df_normal_resampled, anomaly_resampled, name)
         
         # 5. Visualização de sensores
         if mostrar_sensores:
@@ -768,7 +805,7 @@ class EDA:
             print("ETAPA 6: APLICAÇÃO DE FILTRO SAVITZKY-GOLAY")
             print("="*60)
             df_filtered = self.aplicar_filtro_savgol(self.df_normal)
-            self.plot_raw_vs_smooth(df_filtered)
+            if mostrar_savgol: self.plot_raw_vs_smooth(df_filtered)
             resultados['df_filtered'] = df_filtered
         
         print("\n" + "="*60)
@@ -786,18 +823,18 @@ class EDA:
 #     # Carrega e prepara os dados
 #     df_normal, df_faulty = eda.carregar_e_preparar_dados()
     
-#     # Executa a análise exploratória completa
-#     eda.executar_analise_completa()
+    # Executa a análise exploratória completa
+    # eda.executar_analise_completa()
     
-#     # Pipeline completo de pré-processamento (método integrado na classe)
-#     resultados = eda.executar_pipeline_completo(
-#         mostrar_diagnostico=True,
-#         mostrar_analise_univariada=True,
-#         mostrar_sensores=True,
-#         aplicar_filtro=True
-#     )
+    # Pipeline completo de pré-processamento (método integrado na classe)
+    # resultados = eda.executar_pipeline_completo(
+    #     mostrar_diagnostico=True,
+    #     mostrar_analise_univariada=True,
+    #     mostrar_sensores=True,
+    #     aplicar_filtro=True
+    # )
     
-#     print(resultados)
+    # print(resultados)
     
     # OU executar etapas individuais:
     # eda.aplicar_resampling()
@@ -809,4 +846,3 @@ class EDA:
     # df_filtered = eda.aplicar_filtro_savgol(eda.df_normal)
     # eda.plot_raw_vs_smooth(df_filtered)
 
-#%%
