@@ -1,4 +1,3 @@
-
 from matplotlib.pylab import normal
 import pandas as pd
 import numpy as np
@@ -115,9 +114,10 @@ class Preprocessing:
         if scaler is None:
             scaler = RobustScaler()
             fit_scaler = True
-        if fit_scaler and len(df_train)>0:
-            scaler.fit(df_train)
         dftrain_exists =  (df_train is not None and len(df_train))
+        if fit_scaler and dftrain_exists:
+            scaler.fit(df_train)
+        
         
         df_train =  pd.DataFrame(
             scaler.transform(df_train),
@@ -347,26 +347,32 @@ class Preprocessing:
     def __preprocessar_non_DL__(train:pd.DataFrame|np.ndarray, val, test, pca=None, scaler=None,mask=None,WINDOW_SIZE=60,WINDOW_OVERLAP=10):
         
         train,names = Preprocessing.__non_DL_feature_engineering_pipeline__(train, WINDOW_SIZE,WINDOW_OVERLAP)
+        
         val,names = Preprocessing.__non_DL_feature_engineering_pipeline__(val, WINDOW_SIZE,WINDOW_OVERLAP)
         test,names = Preprocessing.__non_DL_feature_engineering_pipeline__(test, WINDOW_SIZE,WINDOW_OVERLAP)
-        
+        assert len(train.shape) == 2 and  len(val.shape) == 2 and len(test.shape) == 2
 
-        if not mask:
+        if mask is None:
             var = train.var(axis=0)
             VAR_THRESHOLD = 1e-5
             keep_var = var > VAR_THRESHOLD
-            
-            corr = np.corrcoef(train, rowvar=False)
+
+            # Apply variance mask first
+            train_var = train[:, keep_var]
+
+            corr = np.corrcoef(train_var, rowvar=False)
             CORR_THRESHOLD = 0.95
             to_drop = set()
             for i in range(corr.shape[0]):
                 for j in range(i+1, corr.shape[0]):
                     if abs(corr[i,j]) > CORR_THRESHOLD:
-                        to_drop.add(j) #ponderar desempate
+                        to_drop.add(j)
 
             keep_corr = [i not in to_drop for i in range(corr.shape[0])]
-            mask = keep_var.copy()
-            mask[keep_var] = keep_corr
+
+            # Final mask: first variance, then correlation
+            mask = np.zeros(train.shape[1], dtype=bool)
+            mask[np.where(keep_var)[0][keep_corr]] = True
         def apply_mask(arr):
             return arr[:, mask]
         
@@ -453,6 +459,5 @@ class Preprocessing:
 
 
 pp = Preprocessing()
-pp.preprocessar_todos_deepLearning()
-
+pp.preprocessar_todos_non_deepLearning()
 print(pp.anomalo_splits[1].shape)
