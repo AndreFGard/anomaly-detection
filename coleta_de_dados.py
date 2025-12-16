@@ -83,9 +83,10 @@ class Dataset:
             lista_dfs.append(temp_df)
             print(f"-> Adicionado: {arquivo} ({len(temp_df)} linhas)")
         
+        df, df_val, df_test = self.split_train_val_test()
         # Junta todos os arquivos da lista em um só DataFrame
-        self.lista_dfs_anomaly = lista_dfs
-        self.df_faulty = pd.concat(lista_dfs, ignore_index=True)
+        self.df_faulty = df_val[df_val['label'] == 1].copy()
+        self.lista_dfs_anomaly = [df for scenario, df in self.df_faulty.groupby('scenario')]
         
         print("="*60)
         print(f"DATASET PRONTO:")
@@ -127,5 +128,40 @@ class Dataset:
                 'distribuicao_labels': self.df_combined['label'].value_counts().to_dict()
             }
         return info
+    
+    @staticmethod
+    def split_sequencial(df, p_train=0.7, p_val=0.1, p_test=0.2):
+        """Corta um DataFrame em 3 pedaços sequenciais baseados nas porcentagens."""
+        size = len(df)
+        end_train = int(size * p_train)
+        end_val = int(size * (p_train + p_val))
+
+        train = df.iloc[:end_train].copy()
+        val = df.iloc[end_train:end_val].copy()
+        test = df.iloc[end_val:].copy()
+
+        return train, val, test
+    
+    def split_train_val_test(self):
+        norm_train, norm_val, norm_test = self.split_sequencial(self.df_normal)
+        # Listas para acumular os pedaços (começamos com o normal)
+        final_train_list = [norm_train]
+        final_val_list   = [norm_val]
+        final_test_list  = [norm_test]
+
+        print(f"1. Normal processado: {len(self.df_normal)} linhas divididas.")
+
+        for df_falhas in self.lista_dfs_anomaly:
+            f_train, f_val, f_test = self.split_sequencial(df_falhas,0,0.5,0.5)
+            print(f"Falha {df_falhas.iloc[0]['scenario']} processado" )
+            final_val_list.append(f_val)
+            final_test_list.append(f_test)
+
+        df_train_final = pd.concat(final_train_list, ignore_index=True)
+        df_val_final = pd.concat(final_val_list, ignore_index=True)
+        df_test_final = pd.concat(final_test_list, ignore_index=True)
+
+        return df_train_final, df_val_final, df_test_final
+
 
 
