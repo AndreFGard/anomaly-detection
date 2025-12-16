@@ -316,9 +316,9 @@ class Preprocessing:
         Faz scaling e PCA nos splits. recebe os datasets ja somente com as features usadas
         """
         from sklearn.decomposition import PCA
-        from sklearn.preprocessing import StandardScaler
+        from sklearn.preprocessing import RobustScaler
         
-        scaler = StandardScaler()
+        scaler = RobustScaler()
         X_train_scaled = scaler.fit_transform(X_train_masked)
         
         # 2. Fit PCA
@@ -420,7 +420,7 @@ class Preprocessing:
         self.anomalo_splits=[anom_val,anom_test]#type:ignore
 
         
-    def preprocessar_todos_deepLearning(self, aplicar_savgol=True, train_splits = [0.6,0.2,0.2], test_splits=[0.0,0.5,0.5], window_size=60, window_overlap=10):
+    def preprocessar_todos_deepLearning(self, aplicar_savgol=True, train_splits = [0.7,0.1,0.2], test_splits=[0.0,0.5,0.5], window_size=60, window_overlap=10):
         """Preprocessa todos os datasets carregados por esta classe e os coloca em
             self.normal_splits e self.anomalo_splits
         
