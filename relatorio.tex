@@ -411,32 +411,64 @@ Deverá abordar a motivação, justificativa e principais contribuições do tra
     \item \textbf{Relevância prática do problema:} Por que ele é interessante?
 \end{itemize}
 
-Os dados analisados neste trabalho são provenientes de sensores inerciais responsáveis por capturar diferentes aspectos do movimento do braço robótico. O acelerômetro mede tanto a aceleração linear quanto a influência da gravidade, sendo sensível a vibrações e impactos abruptos, que podem indicar colisões ou perturbações externas. O giroscópio fornece informações sobre a velocidade angular das articulações, sendo particularmente útil para identificar variações na agilidade do movimento, como atrasos ou oscilações decorrentes de cargas adicionais. O magnetômetro, por sua vez, mede a orientação do sistema em relação ao campo magnético terrestre, apresentando variações mais lentas e sendo sensível a interferências magnéticas inesperadas.
-
-Como o robô executa tarefas de forma sequencial e repetitiva, os sinais dos sensores apresentam um comportamento aproximadamente periódico, refletindo os ciclos de movimento do manipulador. Alterações nesse padrão, como mudanças na forma de onda, atrasos temporais ou picos abruptos, podem estar associadas a condições anômalas de operação.
-
-O conjunto de dados utilizado neste trabalho é proveniente de experimentos realizados com um braço robótico industrial Universal Robot UR3e, em um ambiente de manufatura controlado. Os dados foram coletados com o objetivo de estudar o comportamento do manipulador durante a execução de tarefas típicas da indústria, incluindo aparafusamento, pintura e operações de \textit{pick-and-place}. O dataset é disponibilizado publicamente e foi obtido a partir do repositório associado ao projeto de pesquisa apresentado no IEEE PerCom 2023, sendo amplamente utilizado em estudos relacionados à detecção de anomalias em sistemas robóticos.
-
-As amostras do conjunto de dados consistem em séries temporais de sensores inerciais (IMU), incluindo sinais de acelerômetro, giroscópio e magnetômetro, coletados a uma frequência nominal de 10~Hz. O dataset contempla tanto condições normais de operação quanto cenários de falha mecânica simulada, como colisões com a plataforma, impactos externos e variações artificiais de carga, permitindo a análise comparativa entre padrões normais e anômalos de funcionamento do robô. A diversidade de tarefas, aliada à presença de diferentes tipos de anomalias, torna o conjunto de dados adequado para a avaliação de técnicas de análise exploratória, pré-processamento e aprendizado de máquina aplicadas à detecção de anomalias.
-
 \section{Análise de Dados e Feature Engineering}
 
 \subsection{Análise Exploratória dos Dados}
 
 \subsubsection{Análise Exploratória Estrutural}
 
-A análise exploratória estrutural foi conduzida com o objetivo de compreender a organização e os tipos de atributos presentes no conjunto de dados. O dataset é composto por séries temporais de sensores inerciais, contendo variáveis numéricas contínuas associadas às medições de acelerômetro, giroscópio e magnetômetro, além de uma coluna temporal que representa o instante de coleta de cada amostra.
+A análise exploratória estrutural foi conduzida com o objetivo de compreender a organização e os tipos de atributos presentes no conjunto de dados. Para garantir a integridade da avaliação durante as etapas de \textit{feature selection} e modelagem de forma a prevenir a tomada de decisão enviesada e o vazamento de dados, adotou-se uma estratégia de particionamento dos dados a priori. A divisão em subconjuntos de Treino, Validação e Teste foi realizada imediatamente após a coleta. O Conjunto de Validação, composto por 10\% dos dados Normais e 50\% dos dados de Falha (de cada cenário), foi utilizado para a Análise Exploratória de Dados (EDA) e demais etapas subsequentes.
 
-Cada observação corresponde a uma leitura dos sensores em um determinado instante de tempo, sendo os dados organizados de forma sequencial. A variável temporal é representada por valores inteiros de alta resolução, indicando registros em escala de nanosegundos, o que reforça o caráter temporal do problema. No entanto, com o objetivo de facilitar a interpretação e a análise de integridade temporal, os valores foram convertidos para milissegundos, mantendo a proporcionalidade entre as amostras e reduzindo a magnitude numérica dos registros. Adicionalmente, o conjunto de dados inclui uma variável indicativa da condição de operação do robô, utilizada como rótulo para diferenciar entre comportamento normal e anômalo.
+O dataset é composto por séries temporais de sensores inerciais, contendo variáveis numéricas contínuas associadas às medições de acelerômetro, giroscópio e magnetômetro, nos eixos X, Y e Z; uma coluna temporal que representa o instante de coleta de cada amostra e uma variável indicativa da condição de operação do robô, utilizada como rótulo para diferenciar entre comportamento normal e anômalo. Particularmente, os dados anômalos são separados de acordo com o tipo de falha, sendo elas:
 
-Durante a análise estrutural, foi identificada a presença de uma coluna textual associada à identificação do sensor, a qual apresentou valor constante em todas as observações. Por não agregar informação discriminativa ao problema de detecção de anomalias, essa variável foi removida do conjunto de dados. Adicionalmente, foi realizada a verificação de duplicidade nos registros temporais, não sendo identificadas amostras com timestamps repetidos. Esse resultado indica consistência na indexação temporal das observações.
+\begin{itemize}
+  \item Hitting Platform, que lida com colisão contra a plataforma;
+  \item Hitting Arm, colisão contra o próprio braço robótico;
+  \item Extra Weight, esforço mecânico dado por peso extra;
+  \item Earthquake, vibração estrutural externa.
+\end{itemize}
+
+Cada observação corresponde a uma leitura dos sensores em um determinado instante de tempo, sendo os dados organizados de forma sequencial. A variável temporal é representada por valores inteiros de alta resolução, indicando registros em escala de nanosegundos, reforçando o caráter temporal do problema. No entanto, com o objetivo de facilitar a interpretação e a análise de integridade temporal, os valores foram convertidos para milissegundos, mantendo a proporcionalidade entre as amostras e reduzindo a magnitude numérica dos registros. 
+
+Durante a análise estrutural, foi identificada a presença de uma coluna textual associada à identificação do sensor, que por apresentar valor constante em todas as observações e não agregar informação discriminativa ao problema de detecção de anomalias, essa variável foi removida do conjunto de dados. Adicionalmente, foi realizada a verificação de duplicidade nos registros temporais, não sendo identificadas amostras com timestamps repetidos, o que indica consistência na indexação temporal das observações.
 
 \subsubsection{Informações básicas}
-O conjunto de dados analisado é composto por 874.937 amostras e 11 atributos após a etapa inicial de pré-processamento. Todas as variáveis de sensores são numéricas contínuas do tipo \textit{float}, enquanto a variável alvo é representada por valores inteiros binários. O volume total de memória ocupado pelo dataset é de aproximadamente 73 MB, caracterizando um conjunto de dados de grande porte.
+O conjunto de dados normais analisado é composto por 874.937 amostras e 11 atributos após a etapa inicial de pré-processamento. Todas as variáveis de sensores são numéricas contínuas do tipo \textit{float64}, enquanto a variável alvo é representada por valores inteiros binários. O volume total de memória ocupado por esse dataset é de aproximadamente 73 MB.
 
+Por outro lado, o conjunto de dados anômalos é composto por 49.185 amostras com os 11 atributos contínuos numéricos e a variável alvo binária. Com um volume total de memória de aproximadamente 10MB. Adicionalmente, o dataset possui um atributo \textit{scenario} que indica o tipo de falha a qual esse registro é associado, seguindo a proporção destacada na tabela abaixo.
 
-\subsubsection{Análise de Valores Faltantes e \textit{Outliers}}
-Deverá conter a identificação de valores faltantes e outliers, visualizações de apoio caso necessário, além de análises dos mecanismos. 
+\begin{table}[h]
+\centering
+\caption{Quantidade de anomalias por tipo de falha}
+\label{tab:quantidade-anomalia-tipo-falha}
+\begin{tabular}{llcc}
+\hline
+\multicolumn{1}{c}{\textbf{Cenário}} & \textbf{Quantidade} & \textbf{Proporção} \\ \hline
+Hitting Platform & 14.967 & 0.3043 \\
+Hitting Arm & 11.924 & 0.2424 \\
+Earthquake & 11.409 & 0.2320 \\
+Extra Weight & 10.885 & 0.2213
+\end{tabular}
+\end{table}
+
+\subsubsection{Análise de Duplicatas, Valores Faltantes e \textit{Outliers}}
+A integridade dos dados foi avaliada sob três perspectivas: redundância de registros, continuidade temporal e presença de valores extremos.
+
+\paragraph{Duplicatas e Valores Nulos Explícitos}
+Uma varredura inicial no conjunto de dados brutos não identificou linhas duplicadas ou valores nulos (\textit{NaN}) explícitos nas leituras dos sensores, tanto nos dados normais quanto anômalos. O sistema de aquisição registrou continuamente as 9 variáveis do IMU (acelerômetros, giroscópios e magnetômetros) sem falhas de escrita evidentes.
+
+\paragraph{Análise de Continuidade Temporal}
+Embora não houvesse \textit{NaNs} no arquivo original, a análise do intervalo entre amostras revelou um problema crítico de integridade temporal. A frequência nominal de coleta, era de 10 Hz (com \textit{Sampling Rate} de 100 ms). No entanto, observou-se um \textit{Jitter} (desvio padrão do intervalo de tempo) relevante de aproximadamente 22 ms, com 429 \textit{Gaps} Temporais significativos variando entre 2 ms e 342 ms, onde essa quantidade de perda de pacotes foi considerada quando o valor do \textit{Gap} foi maior que 2x a média, sendo categorizada como quebra de continuidade.
+
+Para padronizar a frequência e facilitar o janelamento das séries temporais nas etapas seguintes, foi utilizada a técnica de \textit{Resampling}, impondo uma grade temporal rígida de 100 ms. Nesse contexto, a irregularidade original foi exposta sob a forma de \textit{Gaps} temporais. No conjunto de dados Normal, o alinhamento gerou cerca de 44.766 lacunas onde não havia dados registrados no timestamp esperado.
+
+Para corrigir os problemas mencionados anteriormente sem descartar dados, optou-se pela \textbf{interpolação linear} dos valores faltantes gerados pelo \textit{Resampling}. Essa abordagem preservou a tendência do movimento entre os pontos conhecidos, restaurando a continuidade necessária para a extração de \textit{features} de janela deslizante.
+
+Para os conjuntos de dados anômalos, a etapa de regularização temporal com \textit{Resampling} e Interpolação foi aplicada de forma iterativa e independente para cada cenário de falha em detrimento a aplicação direta sobre o conjunto anômalo completo. Essa abordagem foi necessária para prevenir as descontinuidades temporais, visto que os experimentos de falha foram registrados em contextos diferentes e com \textit{Gaps} de minutos a horas entre si e a imposição de uma grade temporal contínua de 10Hz no dataset completo forçaria a criação de milhares de linhas vazias para preencher esses intervalos e a interpolação linear geraria dados sintéticos falsos, o que tornaria inviável alimentar o modelo com esses dados, mesmo com etapas subsequentes de pré-processamento.
+
+\paragraph{Análise de \textit{Outliers}}
+A análise de distribuição, por meior de Boxplots e Histogramas, detectou uma quantidade massiva de \textit{outliers} estatísticos, especialmente nos eixos do acelerômetro. Nos dados de colisão (\textit{Hitting Arm}), a curtose do eixo Z atingiu valores extremos ($>100$), com picos de aceleração de até 10g, muito superiores à faixa média normal de operação ($\pm 1g$). Entretenato, diferente de problemas de regressão clássicos, onde \textit{outliers} são ruídos a serem removidos, neste projeto eles constituem o próprio \textbf{sinal de interesse} (a falha mecânica). Consequentemente, optou-se por \textbf{não remover} os \textit{outliers}. 
+Para mitigar o impacto desses valores extremos na normalização dos dados mais a frente, substituiu-se o \textit{StandardScaler} (sensível à média/desvio padrão) pelo \textbf{\textit{RobustScaler}}. Este escalonador utiliza a mediana e o intervalo interquartil (IQR), garantindo que os picos de colisão permaneçam destacados na escala transformada, preservando a assinatura da anomalia para o modelo.
 
 \subsubsection{Análise Univariada} \label{subsec:analise-univariada}
 Executar análises entre atributos e alvo de forma univariada com descrição estatística e visualizações de apoio.
