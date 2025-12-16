@@ -472,3 +472,10 @@ class Preprocessing:
 pp = Preprocessing()
 pp.preprocessar_todos_non_deepLearning()
 print(pp.anomalo_splits[1].shape)
+
+def recompute_preprocessing(pp:Preprocessing, ):
+    # Assuming the parameters are lists, but for simplicity, take the first element if multiple
+    def a(new_window_size=None, window_overlap=None, dimensions_per_samples=None):
+        pp.preprocessar_todos_deepLearning(window_size=new_window_size,window_overlap=window_overlap)
+        return pp.normal_splits,pp.anomalo_splits
+    return a
