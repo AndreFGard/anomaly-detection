@@ -17,6 +17,7 @@ class Dataset:
         self.dataset_path = self._obter_caminho_dataset()
         self.df_normal = None
         self.df_faulty = None
+        self.lista_dfs_anomaly = None
         self.df_combined = None
         self._carregar_dados()
         self._combinar_dados()
@@ -38,27 +39,60 @@ class Dataset:
                 arquivos.append(arquivo_completo)
         return arquivos
     
-    def _carregar_dados(self, arquivo_normal='IMU_10Hz.csv', 
-                       arquivo_faulty='IMU_hitting_platform.csv'):
+    def _carregar_dados(self, arquivo_normal='IMU_10Hz.csv'):
         """
-        Carrega os dados normais e com falha
+        Carrega os dados normais e todos os tipos de falha disponíveis
         
         Args:
             arquivo_normal: Nome do arquivo com dados normais
-            arquivo_faulty: Nome do arquivo com dados com falha
             
         Returns:
-            tuple: (df_normal, df_faulty)
+            tuple: (df_normal, df_faulty, lista_dfs_anomaly)
         """
-        # Carrega dados normais
+        print("--- CARREGAMENTO MANUAL DE CENÁRIOS ---")
+        
+        # 1. Carregar o NORMAL (df)
+        # ------------------------------------------------------------------
+        print("Lendo Base Normal...")
         self.df_normal = pd.read_csv(self.dataset_path + arquivo_normal)
         self.df_normal['label'] = 0
+        self.df_normal['scenario'] = 'Normal'
         
-        # Carrega dados com falha
-        self.df_faulty = pd.read_csv(self.dataset_path + arquivo_faulty)
-        self.df_faulty['label'] = 1
+        # 2. Carregar AS ANOMALIAS (faultydf)
+        # ------------------------------------------------------------------
+        print("Lendo Base de Falhas...")
         
-        return self.df_normal, self.df_faulty
+        # Lista simples e direta com TODOS os arquivos de problema disponíveis
+        arquivos_falha = [
+            'IMU_hitting_platform.csv',   # Colisão: Plataforma
+            'IMU_hitting_arm.csv',        # Colisão: Braço (Robô se batendo)
+            'IMU_extra_weigth.csv',       # Mecânico: Peso Extra (Esforço)
+            'IMU_earthquake.csv',         # Ambiental: Terremoto (Vibração externa)
+        ]
+        
+        lista_dfs = []
+        
+        for arquivo in arquivos_falha:
+            # Carrega cada um individualmente
+            temp_df = pd.read_csv(self.dataset_path + arquivo)
+            
+            # Padroniza
+            temp_df['label'] = 1             # Todo mundo aqui é erro
+            temp_df['scenario'] = arquivo    # Guarda o nome pra você saber o que é
+            
+            lista_dfs.append(temp_df)
+            print(f"-> Adicionado: {arquivo} ({len(temp_df)} linhas)")
+        
+        # Junta todos os arquivos da lista em um só DataFrame
+        self.lista_dfs_anomaly = lista_dfs
+        self.df_faulty = pd.concat(lista_dfs, ignore_index=True)
+        
+        print("="*60)
+        print(f"DATASET PRONTO:")
+        print(f"-> Dados Normais: {len(self.df_normal)} linhas")
+        print(f"-> Dados de Falha:  {len(self.df_faulty)} linhas (Total de 4 tipos de defeito)")
+        
+        return self.df_normal, self.df_faulty, self.lista_dfs_anomaly
     
     def _combinar_dados(self):
         """
