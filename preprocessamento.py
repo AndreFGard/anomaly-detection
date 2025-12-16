@@ -452,9 +452,20 @@ class Preprocessing:
                                              window_overlap,scaler=scaler,
                                              fit_scaler=False, stratifyCol='label')[1:]
                                             
-        
-    
         return None
+    @staticmethod
+    def resizeFlattenedWindow( flattened_windows:np.ndarray, new_window_size:int, window_overlap:int, dimensionsPerSample=9) -> np.ndarray:
+        """Redimensiona  as janelas (já) achatadas para um novo tamanho"""
+        assert (len(flattened_windows.shape) == 2)
+        if window_overlap >= new_window_size:
+            window_overlap = new_window_size//2
+        
+        samplesPerWindow = flattened_windows.shape[1]//dimensionsPerSample
+        samples = flattened_windows.reshape(-1, dimensionsPerSample)
+        
+        newWindows = Preprocessing._getFixedWindows(samples, new_window_size, window_overlap)
+        flattenedNewWindows = newWindows.reshape(newWindows.shape[0], -1)
+        return flattenedNewWindows
     
 
 
