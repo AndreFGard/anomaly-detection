@@ -69,6 +69,7 @@ class BaseHyperParamTuner(ABC):
         self.best_score: float = -np.inf
         self.best_model: Trainer | None = None
         self.results: list[dict] = []
+        self._bestResult = {"EMPTY":0}
         
         self._expandedModelGrid = self._expand_grid(self.param_grid)
 
@@ -94,7 +95,7 @@ class BaseHyperParamTuner(ABC):
         pass
 
     def tune(self, Trainer_factory: Callable[..., Trainer], evaluator: Evaluator) -> None:
-        
+        idx = 0
         
         window_grid = self._get_window_grid()
         
@@ -107,6 +108,7 @@ class BaseHyperParamTuner(ABC):
 
 
             for modelParams in self._expandedModelGrid:
+                idx+=1
                 trainer = Trainer_factory(**modelParams)
                 
                 # Fit
@@ -131,6 +133,7 @@ class BaseHyperParamTuner(ABC):
                     self.best_score = score
                     self.best_params = record
                     self.best_model = trainer
+                    self._bestResult = record
 
 
 class DeepLearningTuner(BaseHyperParamTuner):
@@ -153,14 +156,23 @@ class DeepLearningTuner(BaseHyperParamTuner):
         
         return Xtr, validationX, validationLabels
 
+def recompute_preprocessing(pp):
+    # Adicione *args para capturar (e ignorar) X_train, X_val, anom_val
+    # Ou defina explicitamente: def a(X_tr, X_val, anom, new_window_size, ...)
+    def a(*args, new_window_size, window_overlap, dimensionsPerSample=None):
+        pp.preprocessar_todos_deepLearning(window_size=new_window_size,window_overlap=window_overlap)
+        return *(pp.normal_splits)[:2],pp.anomalo_splits[0]
+    return a
+
+
 
 class StaticFeaturesTuner(BaseHyperParamTuner):
     """
     Tuner for Traditional ML models where windowing involves expensive Feature Engineering.
     """
     def __init__(self, 
-                 feature_engineering_fn: Callable[..., tuple[np.ndarray, np.ndarray, np.ndarray]], 
-                 window_params: dict[str, list], 
+                window_params: dict[str, list], 
+                 feature_engineering_fn: Callable[..., tuple[np.ndarray, np.ndarray, np.ndarray]]=recompute_preprocessing,  #type:ignore
                  **kwargs):
         """
         Args:
@@ -196,4 +208,5 @@ class StaticFeaturesTuner(BaseHyperParamTuner):
         ))
         
         return X_train_feats, validationX, validationLabels
+
 
