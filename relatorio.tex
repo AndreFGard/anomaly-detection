@@ -474,10 +474,83 @@ Para mitigar o impacto desses valores extremos, na normalização dos dados mais
 Executar análises entre atributos e alvo de forma univariada com descrição estatística e visualizações de apoio.
 
 \subsubsection{Análise Bivariada}
-Executar análises semelhantes a \ref{subsec:analise-univariada} considerando também a correlação entre atributos.
+
+A análise bivariada partiu da hipótese de que a ocorrência de anomalias afeta o estado físico do robô, questionou-se se as falhas seriam capazes de "quebrar" o acoplamento mecânico entre sensores redundantes ou se as alterações seriam mais perceptíveis em pares de baixa correlação. Para investigar essa premissa, foram definidos cenários analíticos estratégicos, cujo objetivo foi garantir que diferentes tipos de relação entre sensores fossem explicitamente investigados. Essa escolha é importante porque pares de variáveis com comportamentos distintos (alta correlação, correlação média ou baixa correlação) tendem a responder de maneira diferente à introdução de falhas, fornecendo evidências complementares sobre a dinâmica do sistema. A métrica utilizada para quantificar a divergência entre as distribuições do alvo normal e anômalo foi a distância de Jensen-Shannon.
+
+Foram definidos seis cenários bivariados. Nos dois cenários de redundância (pares com maior correlação física), a importância reside em avaliar sensores fortemente acoplados. Nesses casos, observou-se que, mesmo na presença de falhas, o padrão conjunto se mantém relativamente estável. Quantitativamente, isso se traduziu nas menores distâncias estatísticas observadas: o par (accx,accy) apresentou uma distância JS de apenas 0.12, seguido pelo par (accy,gyroy) com 0.14. Esses baixos valores indicam que falhas nem sempre rompem relações altamente correlacionadas, sugerindo que pares muito redundantes carregam informação similar e tendem a variar de forma conjunta, mesmo em condições anômalas.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/redundancia.png}
+\end{figure}
+
+O cenário de linha de base, definido por um par com correlação próxima à média do sistema, foi incluído para representar um comportamento típico. O par (accx,magx) com uma distância JS de 0.20, ilustra essa referência. Esse valor intermediário permite avaliar como a resposta observada em cenários extremos de fato se diferencia do comportamento esperado em uma interação padrão entre sensores.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/media.png}
+\end{figure}
+
+Já no cenário de complementaridade, composto por sensores pouco correlacionados entre si, observou-se a mudança mais pronunciada entre os dados normais e de falha. A baixa correlação implica que cada sensor responde a aspectos diferentes do fenômeno físico. Quando ocorre uma falha, essas respostas divergentes ampliam drasticamente a separação entre as distribuições conjuntas. Isso ficou evidente nos pares: (accz,magz) atingiu a maior distância registrada (0.61). Esse alto valor confirma que a combinação de variáveis complementares é a mais sensível para capturar a divergência estatística introduzida pelas anomalias.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/diferentes.png}
+\end{figure}
+
+Por fim, os dois cenários de poder preditivo concentraram-se nos sensores mais correlacionados com o rótulo de falha. A importância desses cenários está em avaliar se sensores individualmente informativos também apresentam mudanças relevantes quando analisados em conjunto. Os resultados indicaram que a introdução de falhas altera a densidade conjunta, embora de forma menos extrema que na complementaridade, ou seja, o que importa não é unicamente a importância do sensor, mas também sua correlação para definir se o par vai se comportar de maneira mais parecida ou não.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/top2.png}
+\end{figure}
+
+Em suma, a análise validou a hipótese inicial: pares altamente correlacionados tendem a mascarar a anomalia, enquanto pares com baixa correlação evidenciam as alterações de forma mais clara.
 
 \subsubsection{Análise Multivariada}
-Aplicar técnicas de análise multivariada como \textit{pairplots}, análise de grupos de interesse e criação de variáveis derivadas além de visualizações para apoio.
+
+Na análise multivariada, todas as variáveis dos sensores foram consideradas simultaneamente por meio do PCA (Principal Component Analysis), após padronização. A projeção nos dois primeiros componentes revelou que as anomalias não são facilmente separáveis dos dados normais. As amostras de falha aparecem cercadas por pontos normais e distribuídas em diferentes regiões do espaço reduzido, indicando que não existe um único padrão geométrico simples que caracterize todas as falhas.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/top2.png}
+\end{figure}
+
+Apesar dessa sobreposição, a visualização evidenciou diferenças estruturais relevantes. Em diversas regiões do espaço PCA, observam-se concentrações de falhas com orientações e dispersões distintas, refletindo o impacto específico de cada tipo de anomalia sobre o sistema. Isso indica que, embora não haja separação linear clara, as falhas alteram a dinâmica multivariada de maneira consistente, produzindo padrões locais diferenciados.
+
+As setas do biplot permitiram interpretar a contribuição de cada sensor para essas diferenças, destacando quais variáveis influenciam mais fortemente determinadas direções do espaço PCA. Sensores com vetores mais extensos tiveram maior peso na organização dos dados, ajudando a explicar por que determinadas anomalias se manifestam em regiões específicas do plano.
+
+A análise foi complementada pela visualização temporal de janelas de 30 segundos no espaço PCA, utilizando uma régua visual fixa para todos os cenários. Essa abordagem evidenciou que o comportamento normal tende a produzir trajetórias mais compactas e regulares, enquanto os cenários de falha apresentam trajetórias mais dispersas e irregulares, reforçando o impacto dinâmico das anomalias ao longo do tempo.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/temporal.png}
+\end{figure}
+
+No que se refere às variáveis derivadas, foram calculadas magnitudes físicas da aceleração, do giroscópio e do magnetômetro, com o objetivo de condensar informações multieixo em medidas escalares fisicamente interpretáveis. 
+
+Testes exploratórios básicos, como a comparação de distribuições entre classes e análises de separação estatística, indicaram que essas variáveis capturam alterações relevantes introduzidas pelas falhas, mostrando potencial para uso na otimização dos modelos subsequentes, permitindo, por exemplo, estratégias de redução de dimensionalidade que mantenham a interpretabilidade física do fenômeno ao diminuir o número de variáveis de entrada.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{imagens/importancia.png}
+\end{figure}
+
+Por fim, aplicou-se o K-Means para identificar grupos de interesse no espaço formado pelas variáveis originais. O uso de um método não supervisionado é adequado nesse contexto, pois permite investigar a estrutura intrínseca dos dados sem recorrer aos rótulos. Os resultados mostraram que, considerando apenas os dados brutos, não foi possível identificar um grupo claramente dominante em termos de concentração de falhas.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{c c c}
+        \hline
+        \textbf{Cluster} & \textbf{Normal (\%)} & \textbf{Falha (\%)} \\
+        \hline
+        0 & 96.601872 & 3.398128 \\
+        1 & 96.528435 & 3.471565 \\
+        2 & 96.646539 & 3.353461 \\
+        \hline
+    \end{tabular}
+\end{table}
+
 
 \subsection{Pré-processamento dos dados}
 Apresentar ações referentes ao pré-processamento de dados a exemplo de:
@@ -687,5 +760,3 @@ H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
 
 % that's all folks
 \end{document}
-
-
