@@ -667,15 +667,39 @@ Não havia duplicadas no \textit{dataset}, devido ao processo de geração deste
 \subsubsection{Encoding de Variáveis Categóricas}
 Os dados não contém qualquer variável categórica, sendo desnecessárias estratégias de \textit{encoding}.
 
+
 \subsection{Divisão dos Dados}
-Justificar e apresentar a divisão de dados entre Treino, Validação e Teste com justificativas a respeito da técnica utilizada.
+Os dados normais, não-anomalos, conforme ilustrado em \ref{tab:dataSplit}, foram dividos em 60\%, 20\% e 20\% entre os conjuntos de treinamento, validação e teste, respectivamente, enquanto foi dividido em 50\% para a validação e 50\% para o conjunto de testes. Em ambos os casos, a divisão respeitou a ordenação dos dados ao longo do tempo, visando evitar o vazamento de informações e a violação das relações temporais entre os pontos de dados.
+
+Além disso, no caso dos dados anômalos, foi feita divisão estratificada, para garantir que cada classe de anomalia, que ocorreram cada uma independentemente e não concomitantemente, como os choques na plataforma e os choques no braço robótico, estivessem proporcionalmente representadas nos conjuntos de validação e teste.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Divisão Percentual dos Conjuntos de Dados)}
+    \label{tab:dataSplit}
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        \textbf{Conjunto de Dados} & \textbf{Treino (\%)} & \textbf{Validação (\%)} & \textbf{Teste (\%)} \\
+        \hline
+        Normal & 60,0 & 20,0 & 20,0 \\
+        \hline
+        Anomalia & 0,0 & 50,0 & 50,0 \\
+        \hline
+    \end{tabular}
+    \vspace{-1mm} % Ajuste de espaçamento, se necessário
+\end{table}
 
 \subsection{Feature Engineering}
-Deverá abordar a seleção e extração de \textit{features} caso cabível. Em caso de utilização de técnicas de redução de dimensionalidade, justificar a escolha do método e configurações.
+A estratégia de engenharia de atributos (\textit{Feature Engineering}) adotada neste trabalho foi adaptada aos diferentes de tipos de modelos avalaidos. P processo de extração manual de atributos  foi aplicado \textbf{exclusivamente} aos modelos probabilísticos e baseados em densidade (Isolation Forest, Gaussian Mixture Models).
 
+Para as abordagens baseadas em Deep Learning, foram usados os dados brutos das séries temporais, submetidos apenas à criação de janelas, considerando a capacidade dessas arquiteturas de fazer (\textit{representation learning}) e capturar dependências temporais complexas. Em contrapartida, os modelos clássicos carecem da habilidade nativa de interpretar a sequencialidade temporal de alta dimensão dos sensores brutos (90 dimensões por segundo de janela) tornando imperativa a transformação desses dados em vetores de estatísticas descritivas que sintetizem o comportamento dinâmico e espectral do robô.
+
+Dessa forma, o \textit{pipeline} de engenharia de atributos para os modelos clássicos foi feito em três etapas: Criação de janelas, extração e seleção, conforme detalhado a seguir.
+
+\subsubsection{Criação de janelas}
+Para a criação de janelas, foram utilizadas janelas móveis, que possuem uma intercessão ajustável com as janelas imediatamente vizinhas. O tama
 \section{Modelagem}
 Nesta seção deverá ser feita uma breve revisão dos algoritmos selecionados. Além disso, justificar a escolha do algoritmo juntamente com hiperparâmetros a serem testados. Importante explicitar qual(is) foi(ram) o(s) espaço(s) de busca utilizado, bem como a técnica escolhida para tunagem de hiperparâmetros.
-
 \subsection{Modelo A}
 \subsubsection{Conceitos Básicos}
 \subsubsection{Justificativa}
