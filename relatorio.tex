@@ -325,7 +325,7 @@
 % author names and affiliations
 % use a multiple column layout for up to three different
 % affiliations
-\author{\IEEEauthorblockN{1\textsuperscript{st} Andre Saghaard}
+\author{\IEEEauthorblockN{1\textsuperscript{st} Andre Freitas}
 \IEEEauthorblockA{\textit{Centro de Informática - UFPE} \\
 %\textit{}\\
 Recife, Brazil \\
@@ -387,7 +387,9 @@ rgar@cin.ufpe.br}
 % As a general rule, do not put math, special symbols or citations
 % in the abstract
 \begin{abstract}
-The growing adoption of industrial robots in manufacturing and automation environments has increased the demand for reliable monitoring and early fault detection systems. In industrial contexts, operational anomalies can result in physical damage to equipment, production downtime, risks to human safety, and high corrective maintenance costs. Regarding existing solutions, the literature ranges from analytical dynamic model based approaches, which compare actual behavior with physical simulations but rely on precise parameterization, to classical statistical methods and state estimation filters. More recently, data driven techniques based on Machine Learning and Deep Learning have gained prominence for their ability to model complex non linearities without the need for explicit physical modeling. This work investigates the problem of anomaly detection in industrial robots using time series data from Inertial Measurement Units (IMU), which capture information on acceleration, rotation, and magnetic fields across spatial axes. Different types of mechanical faults are considered, including collisions, mechanical overload, and external disturbances, which distinctly affect the robot's physical dynamics.
+A detecção automática de anomalias em robôs industriais é essencial para segurança operacional e integridade do equipamento. Este trabalho aborda a identificação de falhas mecânicas em um braço robótico UR3e utilizando dados de sensores inerciais (IMU) coletados a 10 Hz. O dataset compreende 874.937 amostras normais e 49.185 anômalas em quatro tipos de falha: colisões contra plataforma, colisões contra o braço, sobrecarga e vibração estrutural. A metodologia envolve análise exploratória, pré-processamento com filtragem Savitzky-Golay e normalização RobustScaler, e extração de sete características estatísticas por janela deslizante. A redução de dimensionalidade via remoção de correlações altas e PCA reduziu o espaço de 72 para 15 dimensões mantendo 95,28\% da variância. Foram implementados três modelos: Gaussian Mixture Model, Isolation Forest e Autoencoder Convolucional 1D. Os resultados demonstram que o GMM alcança discriminação perfeita entre classes (ROC AUC 1.0), enquanto o Autoencoder oferece flexibilidade para capturar padrões não-lineares. A abordagem fornece toolkit adaptável para monitoramento de condição em ambientes industriais.
+
+
 \end{abstract}
 
 % no keywords
@@ -516,7 +518,7 @@ accX & 0.301 & 1.139 \\
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.5\linewidth]{imagens/hitting_arm_accZ.png}
+    \includegraphics[width=0.6\linewidth]{imagens/hitting_arm_accZ.png}
 \end{figure}
 
 O cenário de \textit{Hitting Arm} exibiu uma assinatura estatística semelhante à colisão na plataforma, com o \texttt{accZ} liderando a detectabilidade (KS≈0,74). Contudo, observou-se uma contaminação cruzada mais acentuada nos eixos laterais e nos magnetômetros (ex: \texttt{magY} e \texttt{accX} com KS≈0,30), sugerindo que o choque interno induz vibrações multidirecionais e distorções na orientação magnética momentânea superiores às de um impacto simples.
@@ -538,7 +540,7 @@ magZ & 0.274 & 0.946 \\
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.5\linewidth]{imagens/earthquake_accZ.png}
+    \includegraphics[width=0.6\linewidth]{imagens/earthquake_accZ.png}
 \end{figure}
 
 A anomalia de \textit{Earthquake} revelou o caso mais extremo de alteração. Embora o KS-Statistic do \texttt{accZ} seja moderado (0,49), indicando que as médias das distribuições não se afastaram radicalmente, a Razão de Variância atingiu um valor crítico de 22,4. Isso indica que a falha não se manifesta por deslocamento de trajetória, mas pela injeção massiva de ruído de alta frequência no sistema, transformando a distribuição normal em uma curva extremamente achatada e espalhada. \\
@@ -560,7 +562,7 @@ magZ & 0.281 & 0.943 \\
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.5\linewidth]{imagens/extra_weight_accZ.png}
+    \includegraphics[width=0.6\linewidth]{imagens/extra_weight_accZ.png}
 \end{figure}
 
 Diferentemente dos cenários de impacto e vibração, a falha por \textit{Extra Weight} apresentou um fenômeno de amortecimento dinâmico. O sensor \textit{accZ} manteve a maior separabilidade estatística (KS≈0,75), mas a variância do sinal sofreu uma redução. Fisicamente, isso sugere que o esforço adicional para sustentar a carga limitou a liberdade de oscilação natural do braço (efeito de rigidez), criando uma assinatura de falha caracterizada pela tensão e menor dispersão em torno da trajetória nominal, oposta ao comportamento das colisões.
@@ -572,28 +574,28 @@ Foram definidos seis cenários bivariados. Nos dois cenários de redundância (p
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.5\linewidth]{imagens/redundancia.png}
+    \includegraphics[width=\linewidth]{imagens/redundancia.png}
 \end{figure}
 
 O cenário de linha de base, definido por um par com correlação próxima à média do sistema, foi incluído para representar um comportamento típico. O par (accx,magx) com uma distância JS de 0.20, ilustra essa referência. Esse valor intermediário permite avaliar como a resposta observada em cenários extremos de fato se diferencia do comportamento esperado em uma interação padrão entre sensores.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.5\linewidth]{imagens/media.png}
+    \includegraphics[width=\linewidth]{imagens/media.png}
 \end{figure}
 
 Já no cenário de complementaridade, composto por sensores pouco correlacionados entre si, observou-se a mudança mais pronunciada entre os dados normais e de falha. A baixa correlação implica que cada sensor responde a aspectos diferentes do fenômeno físico. Quando ocorre uma falha, essas respostas divergentes ampliam drasticamente a separação entre as distribuições conjuntas. Isso ficou evidente nos pares: (accz,magz) atingiu a maior distância registrada (0.61). Esse alto valor confirma que a combinação de variáveis complementares é a mais sensível para capturar a divergência estatística introduzida pelas anomalias.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.5\linewidth]{imagens/diferentes.png}
+    \includegraphics[width=\linewidth]{imagens/diferentes.png}
 \end{figure}
 
 Por fim, os dois cenários de poder preditivo concentraram-se nos sensores mais correlacionados com o rótulo de falha. A importância desses cenários está em avaliar se sensores individualmente informativos também apresentam mudanças relevantes quando analisados em conjunto. Os resultados indicaram que a introdução de falhas altera a densidade conjunta, embora de forma menos extrema que na complementaridade, ou seja, o que importa não é unicamente a importância do sensor, mas também sua correlação para definir se o par vai se comportar de maneira mais parecida ou não.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.5\linewidth]{imagens/top2.png}
+    \includegraphics[width=\linewidth]{imagens/top2.png}
 \end{figure}
 
 Em suma, a análise validou a hipótese inicial: pares altamente correlacionados tendem a mascarar a anomalia, enquanto pares com baixa correlação evidenciam as alterações de forma mais clara.
@@ -604,7 +606,7 @@ Na análise multivariada, todas as variáveis dos sensores foram consideradas si
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.5\linewidth]{imagens/top2.png}
+    \includegraphics[width=\linewidth]{imagens/top2.png}
 \end{figure}
 
 Apesar dessa sobreposição, a visualização evidenciou diferenças estruturais relevantes. Em diversas regiões do espaço PCA, observam-se concentrações de falhas com orientações e dispersões distintas, refletindo o impacto específico de cada tipo de anomalia sobre o sistema. Isso indica que, embora não haja separação linear clara, as falhas alteram a dinâmica multivariada de maneira consistente, produzindo padrões locais diferenciados.
@@ -615,7 +617,7 @@ A análise foi complementada pela visualização temporal de janelas de 30 segun
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.5\linewidth]{imagens/temporal.png}
+    \includegraphics[width=\linewidth]{imagens/temporal.png}
 \end{figure}
 
 No que se refere às variáveis derivadas, foram calculadas magnitudes físicas da aceleração, do giroscópio e do magnetômetro, com o objetivo de condensar informações multieixo em medidas escalares fisicamente interpretáveis. 
@@ -624,7 +626,7 @@ Testes exploratórios básicos, como a comparação de distribuições entre cla
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.5\linewidth]{imagens/importancia.png}
+    \includegraphics[width=\linewidth]{imagens/importancia.png}
 \end{figure}
 
 Por fim, aplicou-se o K-Means para identificar grupos de interesse no espaço formado pelas variáveis originais. O uso de um método não supervisionado é adequado nesse contexto, pois permite investigar a estrutura intrínseca dos dados sem recorrer aos rótulos. Os resultados mostraram que, considerando apenas os dados brutos, não foi possível identificar um grupo claramente dominante em termos de concentração de falhas.
