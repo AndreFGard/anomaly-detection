@@ -581,14 +581,14 @@ O cenário de linha de base, definido por um par com correlação próxima à m�
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{imagens/media.png}
+    \includegraphics[width=\linewidth]{imagens/diferentes.png}
 \end{figure}
 
 Já no cenário de complementaridade, composto por sensores pouco correlacionados entre si, observou-se a mudança mais pronunciada entre os dados normais e de falha. A baixa correlação implica que cada sensor responde a aspectos diferentes do fenômeno físico. Quando ocorre uma falha, essas respostas divergentes ampliam drasticamente a separação entre as distribuições conjuntas. Isso ficou evidente nos pares: (accz,magz) atingiu a maior distância registrada (0.61). Esse alto valor confirma que a combinação de variáveis complementares é a mais sensível para capturar a divergência estatística introduzida pelas anomalias.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{imagens/diferentes.png}
+    \includegraphics[width=\linewidth]{imagens/media.png}
 \end{figure}
 
 Por fim, os dois cenários de poder preditivo concentraram-se nos sensores mais correlacionados com o rótulo de falha. A importância desses cenários está em avaliar se sensores individualmente informativos também apresentam mudanças relevantes quando analisados em conjunto. Os resultados indicaram que a introdução de falhas altera a densidade conjunta, embora de forma menos extrema que na complementaridade, ou seja, o que importa não é unicamente a importância do sensor, mas também sua correlação para definir se o par vai se comportar de maneira mais parecida ou não.
@@ -867,10 +867,9 @@ Por fim, a abordagem baseada em erro de reconstrução permite uma separação c
 \end{tabular}
 \end{table}
 
-\subsubsection{Hiperparâmetros Selecionados} A janela tem tamanho 60 com overlap 15. Para o modelo, tem duas camadas convolucionais com 8 e 6 filtros, respectivamente e 5 e 3 de tamanho de kernel, 4 canais no espaço latente e threshold de 99.  
-
+\subsubsection{Hiperparâmetros Selecionados}
+A janela tem tamanho 60 com overlap 15. Para o modelo, tem duas camadas convolucionais com 8 e 6 filtros, respectivamente e 5 e 3 de tamanho de kernel, 4 canais no espaço latente e threshold de 99.  
 \section{Análise e Comparação de Resultados}
-Deverá conter as métricas que foram utilizadas para a análise juntamente com revisão de conceito e justificativas. É fundamental comparar os resultados obtidos entre os diferentes modelos treinados. Além disso, é interessante utilizar ferramentas estatísticas e/ou testes de hipótese quando cabível.
 \begin{table}[ht]
 \centering
 \caption{Resultados de desempenho do modelo Gaussian Mixture Model (GMM) no conjunto de teste.}
@@ -980,9 +979,12 @@ PR AUC (Average Precision) & 1.0000 \\
 \hline
 \end{tabular}
 \end{table}
+
 A Tabela de resultados e a matriz de confusão obtidas para o Autoencoder Convolucional evidenciam um desempenho significativamente superior em comparação aos modelos baseados em métodos estatísticos e de isolamento. No conjunto de teste, o modelo alcançou uma acurácia de 95,67\%, a maior de todas, indicando elevada capacidade global de classificação. Além disso, o recall máximo de 1 e a matriz de confusão demonstra a ausência de falsos negativos. Tal resultado é particularmente relevante nos cenários industriais, como discutido.
 
 Em contrapartida, observa-se a presença de 176 falsos positivos, correspondentes a amostras normais classificadas incorretamente como anomalias. Esse fenômeno se reflete em uma precisão para a classe anômala de 48,54\%, indicando que aproximadamente metade das detecções de anomalia corresponde, a padrões normais. O equilíbrio entre precisão e recall é sintetizado pelo F1-score de 0,6535 para a classe anômala, valor substancialmente superior aos observados nos modelos Isolation Forest e GMM. Esse resultado indica que o Autoencoder Convolucional alcança uma relação mais favorável entre sensibilidade e seletividade, mesmo sob forte desbalanceamento dos dados. Os valores máximos obtidos para ROC AUC e Average Precision (ambos iguais a 1,00) evidenciam uma separação praticamente perfeita entre padrões normais e anômalos em termos do erro de reconstrução.
+
+
 \section{Conclusão e Discussão}
 
 O GMM alcançou ROC AUC e PR AUC perfeitos (1.0), indicando excelente separabilidade entre dados normais e anômalos. Porém, sua precisão foi baixa (0.19), revelando problema de calibração de limiar. A escolha de um único componente sugere que o comportamento normal é homogêneo e as anomalias representam desvios estatísticos claros.
