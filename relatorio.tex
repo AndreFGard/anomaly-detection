@@ -155,6 +155,8 @@
 
 \usepackage{graphicx}
 \usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{multirow}
 
 % *** MATH PACKAGES ***
 %
@@ -404,11 +406,12 @@ Breve apresentação do contexto do trabalho, problema/tema a ser abordado, solu
 
 \section{Introdução}
 
-A motivação para este estudo decorre da crescente adoção de robôs industriais em operações críticas, onde a execução de tarefas repetitivas em proximidade com operadores exige monitoramento constante. Neste contexto, a identificação automática de anomalias é essencial para detectar falhas mecânicas e interferências externas, garantindo a integridade do equipamento e a segurança do processo.
+Deverá abordar a motivação, justificativa e principais contribuições do trabalho em questão. Alguns pontos que devem ser abordados de forma \textbf{breve}, são:
 
-A análise baseia-se em dados de sensores inerciais (IMU), capazes de capturar a dinâmica do manipulador. O acelerômetro monitora vibrações e impactos abruptos (indicativos de colisões), enquanto o giroscópio registra a velocidade angular, permitindo identificar oscilações ou atrasos causados por cargas excessivas. O magnetômetro, mede a orientação do sistema em relação ao campo magnético terrestre, apresentando variações mais lentas e sendo sensível a interferências magnéticas inesperadas. Como o robô opera em ciclos sequenciais, os sinais normais apresentam periodicidade bem definida; desvios nesse padrão, como alterações de forma de onda ou picos de energia, constituem as assinaturas principais de condições anômalas.
-
-O conjunto de dados utilizado provém de experimentos públicos (IEEE PerCom 2023) realizados com um braço robótico UR3e em ambiente controlado. As amostras consistem em séries temporais coletadas a 10~Hz durante tarefas de \textit{pick-and-place}, abrangendo tanto o comportamento normal quanto cenários de falhas simuladas, como colisões (base e braço) e variações de carga. Essa diversidade torna o \textit{dataset} ideal para avaliar a eficácia de técnicas de análise exploratória, pré-processamento e aprendizado de máquina na caracterização de falhas industriais.
+\begin{itemize}
+    \item \textbf{Contextualização do problema:} Qual o problema/tema que está sendo investigado?
+    \item \textbf{Relevância prática do problema:} Por que ele é interessante?
+\end{itemize}
 
 \section{Análise de Dados e Feature Engineering}
 
@@ -459,11 +462,16 @@ Uma varredura inicial no conjunto de dados brutos não identificou linhas duplic
 \paragraph{Análise de Continuidade Temporal}
 Embora não houvesse \textit{NaNs} no arquivo original, a análise do intervalo entre amostras revelou um problema crítico de integridade temporal. A frequência nominal de coleta, era de 10 Hz (com \textit{Sampling Rate} de 100 ms). No entanto, observou-se um \textit{Jitter} (desvio padrão do intervalo de tempo) relevante de aproximadamente 22 ms, com 429 \textit{Gaps} Temporais significativos variando entre 2 ms e 342 ms, onde essa quantidade de perda de pacotes foi considerada quando o valor do \textit{Gap} foi maior que 2x a média, sendo categorizada como quebra de continuidade.
 
-Para padronizar a frequência e facilitar o janelamento das séries temporais nas etapas seguintes, foi utilizada a técnica de \textit{Resampling}, impondo uma grade temporal rígida de 100 ms, conforme detalhado na seção de Pré-Processamento dos Dados. Nesse contexto, a irregularidade original foi exposta sob a forma de \textit{Gaps} temporais. No conjunto de dados Normal, o alinhamento gerou cerca de 44.766 lacunas onde não havia dados registrados no timestamp esperado.
+Para padronizar a frequência e facilitar o janelamento das séries temporais nas etapas seguintes, foi utilizada a técnica de \textit{Resampling}, impondo uma grade temporal rígida de 100 ms. Nesse contexto, a irregularidade original foi exposta sob a forma de \textit{Gaps} temporais. No conjunto de dados Normal, o alinhamento gerou cerca de 44.766 lacunas onde não havia dados registrados no timestamp esperado.
 
+Para corrigir os problemas mencionados anteriormente sem descartar dados, optou-se pela \textbf{interpolação linear} dos valores faltantes gerados pelo \textit{Resampling}. Essa abordagem preservou a tendência do movimento entre os pontos conhecidos, restaurando a continuidade necessária para a extração de \textit{features} de janela deslizante.
+
+Para os conjuntos de dados anômalos, a etapa de regularização temporal com \textit{Resampling} e Interpolação foi aplicada de forma iterativa e independente para cada cenário de falha em detrimento a aplicação direta sobre o conjunto anômalo completo. Essa abordagem foi necessária para prevenir as descontinuidades temporais, visto que os experimentos de falha foram registrados em contextos diferentes e com \textit{Gaps} de minutos a horas entre si e a imposição de uma grade temporal contínua de 10Hz no dataset completo forçaria a criação de milhares de linhas vazias para preencher esses intervalos e a interpolação linear geraria dados sintéticos falsos, o que tornaria inviável alimentar o modelo com esses dados, mesmo com etapas subsequentes de pré-processamento.
 
 \paragraph{Análise de \textit{Outliers}}
-A análise de distribuição, por meior de Boxplots e Histogramas, detectou uma quantidade massiva de \textit{outliers} estatísticos, especialmente nos eixos do acelerômetro. Nos dados de colisão (\textit{Hitting Arm}), a curtose do eixo Z atingiu valores extremos ($>100$), com picos de aceleração de até 10g, muito superiores à faixa média normal de operação ($\pm 1g$). Entretenato, diferente de problemas de regressão clássicos, onde \textit{outliers} são ruídos a serem removidos, neste projeto eles constituem o próprio \textbf{sinal de interesse} (a falha mecânica).
+A análise de distribuição, por meior de Boxplots e Histogramas, detectou uma quantidade massiva de \textit{outliers} estatísticos, especialmente nos eixos do acelerômetro. Nos dados de colisão (\textit{Hitting Arm}), a curtose do eixo Z atingiu valores extremos ($>100$), com picos de aceleração de até 10g, muito superiores à faixa média normal de operação ($\pm 1g$). Entretenato, diferente de problemas de regressão clássicos, onde \textit{outliers} são ruídos a serem removidos, neste projeto eles constituem o próprio \textbf{sinal de interesse} (a falha mecânica). Consequentemente, optou-se por \textbf{não remover} os \textit{outliers}. 
+Para mitigar o impacto desses valores extremos, na normalização dos dados mais a frente, substituiu-se o \textit{StandardScaler} que é um \textit{scaler} sensível à média e desvio padrão, pelo \textbf{\textit{RobustScaler}}, pois ele utiliza a mediana e o intervalo interquartil (IQR), garantindo que os picos de colisão permaneçam destacados na escala transformada, preservando a assinatura da anomalia para o modelo. A normalização foi feita com o \textit{fit} dos dados normais \textit{resampled} e transformação tanto dos dados normais quanto dos anômalos \textit{resampled} com a concatenação dos cenários de falha.
+
 \subsubsection{Análise Univariada} \label{subsec:analise-univariada}
 Executar análises entre atributos e alvo de forma univariada com descrição estatística e visualizações de apoio.
 
@@ -550,137 +558,213 @@ Por fim, aplicou-se o K-Means para identificar grupos de interesse no espaço fo
 Apresentar ações referentes ao pré-processamento de dados a exemplo de:
 
 \subsubsection{Tratamento de Valores Faltantes}
+Em caso de valores faltantes, descrever o tratamento executado para sanar os problemas com justificativas bem fundamentadas.
 
-Para corrigir os problemas de  \textit{timestamps} irregularmente espaçadas e amostras faltantes, sem descartar dados, optou-se pela \textbf{interpolação linear} dos valores faltantes gerados pelo \textit{Resampling}. Essa abordagem preservou a tendência do movimento entre os pontos conhecidos, restaurando a continuidade necessária para a extração de \textit{features} de janela deslizante.
-
-Para os conjuntos de dados anômalos, a etapa de regularização temporal com \textit{Resampling} e Interpolação foi aplicada de forma iterativa e independente para cada cenário de falha, ao invés da aplicação direta sobre o conjunto anômalo completo. Essa abordagem foi necessária para prevenir as descontinuidades temporais, visto que os experimentos de falha foram registrados em contextos diferentes e com \textit{Gaps} de minutos a horas entre si e a imposição de uma grade temporal contínua de 10Hz no dataset completo forçaria a criação de milhares de linhas vazias para preencher esses intervalos e a interpolação linear geraria dados sintéticos falsos, o que tornaria inviável alimentar o modelo com esses dados, mesmo com etapas subsequentes de pré-processamento.
-
-
-\subsubsection{Tratamento de Outliers e Feature Scaling}
-Conforme detalhado anteriormente, os \textit{outliers} identificados representam uma parte importante do problema e representam medições verossímeis. Consequentemente, optou-se por \textbf{não removê-los}. No entanto, tendo em mente a fonte dos dados e a natureza dos sensores, foi necessário aplicar um filtro para reduzir o ruído dos sinais, sendo utilizado o Savitzky-Golay, que ajusta polinômios localmente, por sua capacidade de preservar melhor a forma e pico dos sinais que outros baseados em médias rolantes.
-Adiconalmente, para mitigar o impacto desses valores extremos do sensores na normalização dos dados, substituiu-se o \textit{StandardScaler} (sensível à média/desvio padrão) pelo \textbf{\textit{RobustScaler}}, sendo este ajustado somente ao conjunto de testes dos dados normais e posteriormente usado para transformar os outros conjuntos. Este escalonador utiliza a mediana e o intervalo interquartil (IQR), garantindo que os picos de colisão permaneçam destacados na escala transformada, preservando a assinatura da anomalia para o modelo. 
-
+\subsubsection{Tratamento de Outliers}
+Em caso de \textit{outliers}, apresentar o tratamento executado com devidas justificativas.
 
 \subsubsection{Detecção e Tratamento de Duplicadas}
-Não havia duplicadas no \textit{dataset}, devido ao processo de geração deste ~\cite{casper}. 
+Avaliar se há presença de duplicadas no dataset utilizado e tratá-las de acordo.
 
+\subsubsection{Feature Scaling}
+Utilizar ferramentas de normalização como StandardScaler ou MinMaxScaler para normalizar os atributos.
 
 \subsubsection{Encoding de Variáveis Categóricas}
-Os dados não contém qualquer variável categórica, sendo desnecessárias estratégias de \textit{encoding}.
+Utilizar ferramentas adequadas para tratamento de variáveis. Indicar qual técnica foi utilizada e a motivação.
 
 \subsection{Divisão dos Dados}
-Os dados normais, não-anomalos, conforme ilustrado em \ref{tab:dataSplit}, foram dividos em 60\%, 20\% e 20\% entre os conjuntos de treinamento, validação e teste, respectivamente, enquanto foi dividido em 50\% para a validação e 50\% para o conjunto de testes. Em ambos os casos, a divisão respeitou a ordenação dos dados ao longo do tempo, visando evitar o vazamento de informações e a violação das relações temporais entre os pontos de dados.
-
-Além disso, no caso dos dados anômalos, foi feita divisão estratificada, para garantir que cada classe de anomalia, que ocorreram cada uma independentemente e não concomitantemente, como os choques na plataforma e os choques no braço robótico, estivessem proporcionalmente representadas nos conjuntos de validação e teste.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Divisão Percentual dos Conjuntos de Dados)}
-    \label{tab:dataSplit}
-    \begin{tabular}{|c|c|c|c|}
-        \hline
-        \textbf{Conjunto de Dados} & \textbf{Treino (\%)} & \textbf{Validação (\%)} & \textbf{Teste (\%)} \\
-        \hline
-        Normal & 60,0 & 20,0 & 20,0 \\
-        \hline
-        Anomalia & 0,0 & 50,0 & 50,0 \\
-        \hline
-    \end{tabular}
-    \vspace{-1mm} % Ajuste de espaçamento, se necessário
-\end{table}
+Justificar e apresentar a divisão de dados entre Treino, Validação e Teste com justificativas a respeito da técnica utilizada.
 
 \subsection{Feature Engineering}
-A estratégia de engenharia de atributos (\textit{Feature Engineering}) adotada neste trabalho foi adaptada aos diferentes de tipos de modelos avalaidos. Processo de extração manual de atributos  foi aplicado \textbf{exclusivamente} aos modelos probabilísticos e baseados em densidade (Isolation Forest, Gaussian Mixture Models).
-
-Para as abordagens baseadas em Deep Learning, foram usados os dados brutos das séries temporais, submetidos apenas à criação de janelas, considerando a capacidade dessas arquiteturas de fazer (\textit{representation learning}) e capturar dependências temporais complexas. Em contrapartida, os modelos clássicos carecem da habilidade nativa de interpretar a sequencialidade temporal de alta dimensão dos sensores brutos (90 dimensões por segundo de janela) tornando imperativa a transformação desses dados em vetores de estatísticas descritivas que sintetizem o comportamento dinâmico e espectral do robô.
-
-Dessa forma, o \textit{pipeline} de engenharia de atributos para os modelos clássicos foi feito em três etapas: Criação de janelas, extração e seleção, conforme detalhado a seguir.
-
-\subsubsection{Criação de janelas}
-Para a criação de janelas, foram utilizadas janelas móveis (\textit{sliding windows})\ref{windows}, que possuem uma intercessão ajustável com as janelas imediatamente vizinhas Um algoritmo ilustrativo para a criação de janelas deslizantes esa descrito em \ref{alg:sliding_window}.
-
-Cada parte dos dados passou por esse processo isoladamente, e janelas incompletas foram descartadas para garantir a uniformidade das matrizes resultantes. Por exemplo, visto que a frequência de coleta de dados foi de 10Hz, uma janela de 40 amostras captura 4 segundos de funcionamento do braço robótico. Ademais, os parâmetros das janelas foram considerados como hiperparâmetros na etapa da modelagem, para que sejam escolhidos otimamente. Esta escolha é muito importante, porque o tamanho da janela depende muito dos modelos, e os eventos de interesse são muitos particulares do problema. No caso desse dataset, observamos que os eventos de interesse de fato exigiam uma análise um período de alguns segundos.
-\begin{algorithm}
-\caption{Segmentação em Janelas Deslizantes (Sliding Windows)}\label{alg:sliding_window}
-\begin{algorithmic}
-\Require $D$ (Dados $N \times F$), $L$ (Tamanho da Janela), $O$ (Overlap)
-\Ensure $\mathcal{W}$ (Tensor de janelas $M \times L \times F$)
-
-\State $S \gets L - O$
-\State $N \gets \text{rows}(D)$
-\State $\mathcal{W} \gets \emptyset$ 
-\State $i \gets 0$
-
-\While{$i + L \leq N$}
-    \State $w \gets D[i : i + L, :]$ 
-    \State $\mathcal{W} \gets \mathcal{W} \cup \{w\}$ 
-    \State $i \gets i + S$ 
-\EndWhile
-
-\State \Return $\mathcal{W}$
-\end{algorithmic}
-\end{algorithm}
-
-\subsubsection{Extração e seleção de features}
-Nesta etapa, buscamos transformar os sinais dos sensores em uma representação mais informativa, bem como adaptá-la às limitações dos modelos que não usam Deep Learning  usados neste trabalho, que não lidam bem com a grande quantidade de dimensões envolvida e com a alta correlação entre features. Esse processo se dividiu entre a extração e a seleção de features.
-
-Inicialmente, fizemos a extração de features a nível de amostra. A partir dos sinais originais, criamos variáveis derivadas utilizando a interpretação física do problema e do que cada varíavel representava, como a norma vetorial de cada sensor, que captura a magnitude total da mudança por ele registrada, unindo os eixos.
-
-Em seguida, os sinais e seus atributos derivados foram segmentados em janelas como descrito a cima. Para cada janela, foram extraídas estatísticas agregadas calculadas exclusivamente com as \textit{features} originais, agregando tendências e informações sobre o periodo inteiro de tempo representado pelo tamanho da janela.
-\begin{enumerate}
-    \item \textbf{Média:} representa o valor médio do sinal ao longo da janela e está associada ao nível basal ou tendência local do movimento. Alterações na média podem indicar mudanças sistemáticas no comportamento do sistema, como inclinações persistentes ou deslocamentos contínuos.
-    
-    \item \textbf{Desvio padrão:} quantifica a variabilidade do sinal dentro da janela, sendo fortemente associado à intensidade de vibrações.
-    
-    \item \textbf{RMS (Root Mean Square):} mede a energia total do sinal, combinando informações de magnitude e variabilidade. Diferentemente da média, o RMS é sensível tanto a oscilações quanto a impactos.
-    
-    \item \textbf{Pico-a-pico (peak-to-peak):} corresponde à diferença entre os valores máximo e mínimo do sinal na janela, tambem capturando grandes variações.
-    
-    \item \textbf{Curtose:} caracteriza o grau de impulsividade do sinal, indicando a presença de picos abruptos e eventos raros de grande magnitude..
-    
-    \item \textbf{Fator de crista (crest factor):} definido como a razão entre o valor de pico e o RMS, fornece uma medida normalizada da severidade dos picos em relação à energia média do sinal. Essa \textit{feature} é especialmente útil para diferenciar vibrações contínuas de impactos pontuais.
-    
-    \item \textbf{Frequência dominante:} extraída a partir da transformada de Fourier da janela, indica a frequência com maior energia espectral. Essa informação permite capturar características dinâmicas do sistema, como ressonâncias, mudanças de regime de operação ou vibrações induzidas por cargas externas.
-\end{enumerate}
-
-Essas \textit{features} sintetizam muitas propriedades fundamentais do comportamento do sinal dentro da janela e constituem uma representação comparativamente compacta desse comportamento. Dessa forma, ao invés de termos um total de \(features*tamanhoDaJanela\) dimensões, ou seja, 360, no caso dos nossos 9 sensores e uma janela de 40 amostras, obtemos apenas 72 dimensões.
-
-o entanto, apesar de representar uma redução considerável da dimensionalidade, essas \textit{features} ainda podem apresentar elevada redundância estatística. Em particular, muitas das estatísticas extraídas descrevem aspectos relacionados do sinal (por exemplo, desvio padrão, RMS e pico-a-pico), o que resulta em fortes correlações lineares entre atributos. A presença desse tipo de redundância pode prejudicar o desempenho de modelos probabilísticos e baseados em densidade, além de aumentar o custo computacional e dificultar a interpretação dos resultados.
-
-Dessa forma, foi aplicada uma etapa explícita de seleção de \textit{features}. Inicialmente, realizou-se uma análise de correlação linear entre os atributos extraídos, utilizando o coeficiente de correlação de Pearson. Para cada par de \textit{features} cuja correlação absoluta excedia um limiar de 0,95, apenas uma delas foi mantida. Essa estratégia visa eliminar atributos altamente redundantes, preservando, ao mesmo tempo, a maior diversidade possível de informações relevantes. Após essa etapa, o número de \textit{features} foi reduzido de 72 para 58.
-
-Mesmo após a remoção de correlações elevadas, o espaço de atributos ainda permanecia relativamente grande e com possíveis dependências lineares de ordem superior. Assim, aplicou-se uma etapa adicional de redução de dimensionalidade por meio da Análise de Componentes Principais (PCA). O PCA foi ajustado exclusivamente sobre o conjunto de treinamento, após normalização robusta dos dados, e o número de componentes foi selecionado de forma a preservar pelo menos 95\% da variância total dos dados. Como resultado, o espaço de atributos foi reduzido de 58 para 15 componentes principais, mantendo uma variância explicada acumulada de aproximadamente 95,28%.
-
-Essa combinação de seleção por correlação e redução via PCA permitiu obter uma representação compacta, pouco redundante e estatisticamente bem condicionada dos dados, adequada às premissas dos modelos clássicos avaliados neste trabalho. Além disso, ao concentrar a maior parte da variabilidade dos sinais em um número reduzido de componentes, essa abordagem contribui para maior estabilidade numérica, melhor generalização e menor sensibilidade a ruído.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\linewidth]{imagens/variancia.png}
-\end{figure}
-
-
+Deverá abordar a seleção e extração de \textit{features} caso cabível. Em caso de utilização de técnicas de redução de dimensionalidade, justificar a escolha do método e configurações.
 
 \section{Modelagem}
-Nesta seção deverá ser feita uma breve revisão dos algoritmos selecionados. Além disso, justificar a escolha do algoritmo juntamente com hiperparâmetros a serem testados. Importante explicitar qual(is) foi(ram) o(s) espaço(s) de busca utilizado, bem como a técnica escolhida para tunagem de hiperparâmetros.
+Três modelos foram escolhidos para esse projeto: Gaussian Mixture Model (GMM), Isolation Forest e Autoencoder Convolucional. Todos os modelos condizem com o problema proposto: são próprios para aprendizado não-supervisionado, cada um possuindo uma abordagem distinta para tanto: clustering, isolamento e aprendizado profundo baseado em redes neurais, respectivamente, tornando-os apropriados para comparar a eficácia desses diferentes métodos para o dataset em questão. O processo de seleção de modelos utilizou como métrica principal a AUC. No entanto, devido ao uso de predições binárias em vez de escores contínuos, essa métrica não corresponde estritamente à AUROC tradicional, funcionando como uma medida de desempenho baseada em classificação após a aplicação de um limiar
+\subsection{Gaussian Mixture Model}
+\subsubsection{Conceitos Básicos} O modelo de mistura gaussiana (gaussian mixture model, GMM) é um modelo probabilístico que assume que os dados são descritos por uma mistura de distribuições gaussianas.
 
-\subsection{Modelo A}
-\subsubsection{Conceitos Básicos}
+Formalmente, um GMM modela a densidade de probabilidade de uma observação
+$\mathbf{x} \in \mathbb{R}^d$ como uma soma ponderada de $K$ componentes Gaussianos,
+dada por:
+
+\begin{equation}
+p(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \, \mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k),
+\end{equation}
+
+onde $\pi_k$ representa o peso da $k$-ésima componente, satisfazendo
+$\sum_{k=1}^{K} \pi_k = 1$, e $\boldsymbol{\mu}_k$ e $\boldsymbol{\Sigma}_k$ correspondem,
+respectivamente, ao vetor de médias e à matriz de covariância da componente $k$. Os parâmetros são encontrados por meio da maximização de expectativa, alternando entre momento de estimação das probabilidades e atualização dos parâmetros.
+
+O GMM é um algoritmo de soft clustering, ou seja, atribui probabilidades ao invés de classificar unicamente a um dos componentes, tornando-o mais robusto. Serão classificadas como anomalias os dados que possuam baixa probabilidade (log-verossimilhança).
+\subsubsection{Justificativa} O GMM foi escolhido primeiramente por ser um modelo de clustering, uma das abordagens mais importantes para aprendizagem não-supervisionada. Entre os algoritmos desse tipo, o GMM se destaca por utilizar o soft clustering probabilistico e modelar os grupos com base em multiplas distribuições, lidando bem com dados mais complexos. 
+
+Por fim, o GMM apresenta uma boa relação entre expressividade e custo computacional, sendo capaz de modelar correlações entre variáveis (por meio de matrizes de covariância completas) sem exigir grandes volumes de dados ou recursos computacionais elevados. Dessa forma, o GMM se configura como uma escolha sólida e complementar aos modelos de isolamento e aprendizado profundo considerados neste trabalho, contribuindo para uma comparação abrangente entre diferentes paradigmas de detecção de anomalias aplicados ao dataset em questão.
+\subsubsection{Espaço de Busca} Para a tunagem foi utilizado o grid search. Os parâmetros buscados para descobrir o melhor número de componentes foram limitados a números baixos devido à natureza do problema: o braço robótico, que deve seguir movimentos repetitivos em condições normais, não precisará de muitos clusters, como foi verificado pelo seu melhor parâmetro.
+\begin{table}[ht]
+\centering
+\caption{Espaço de busca dos hiperparâmetros utilizados na tunagem do modelo Gaussian Mixture Model (GMM).}
+\label{tab:gmm_search_space}
+\begin{tabular}{ll}
+\hline
+\textbf{Categoria} & \textbf{Hiperparâmetro e valores considerados} \\
+\hline
+\multirow{2}{*}{Janelamento} 
+& (\texttt{new\_window\_size}): \{30, 60\} \\
+& (\texttt{window\_overlap}): \{0, 15\} \\
+\hline
+\multirow{4}{*}{GMM}
+& (\texttt{n\_components}): \{1, 2, 3, 4\} \\
+& (\texttt{covariance\_type}): \{\texttt{diag}, \texttt{full}\} \\
+& (\texttt{reg\_covar}): \{1e{-}5\} \\
+& (\texttt{threshold\_percentile}): \{1, 2.5, 5\} \\
+\hline
+\end{tabular}
+\end{table}
+\subsubsection{Hiperparâmetros Selecionados} Para a janela, o melhor foi com tamanho 60 e overlap 0. Para o modelo, foi 1 componente, tipo de covariância 'diag' e limiar 1.
+\subsection{Isolation Forest}
+\subsubsection{Conceitos Básicos} O Isolation Forest é um modelo de aprendizagem não-supervisionada bastante relacionado com detecção de anomalias. Diferentes de outros modelos que também são frequentemente usados para essa área, o Isolation Forest utiliza o princípio de isolamento, isto é, dado que anomalias devem ser bem diferenciáveis dos dados normais, elas serão mais fáceis de isolar com um particionamento aleatório.
+
+O algoritmo constrói um conjunto de árvores binárias, denominadas isolation trees, nas quais cada nó interno realiza uma divisão aleatória escolhendo um atributo e um valor de corte também aleatório dentro do intervalo observado desse atributo. O processo continua recursivamente até que a instância seja isolada em um nó folha ou até que seja atingida uma profundidade máxima.
+
+Para definir se um dado é anômalo ou não, o modelo utiliza o comprimento médio do caminho, ou seja, a profundida média necessária para isolá-lo. O anomaly score gerado parte do princípio que dados anômalos serão isolados mais cedos que os demais.
+\subsubsection{Justificativa} Primeiramente, esse modelo foi projetado precisamente para problemas como o nosso: não-supervisionado, com detecção de anomalias raras, e utiliza uma abordagem diferente da dos outros modelos escolhidos. 
+
+Além disso, ele funciona como um bom contraponto para o clustering previamente testado: datasets como o que usamos, relacionado à sensores industriais, costumam ter muitas dimensões, especialmente com o janelamento temporal, o que impacta negativamente modelos como K-Means e GMM, a chamada "maldição da dimensionalidade". Por não depender de métricas de distância globais, o Isolation Forest evita esse problema. O cárater aleatório e de ensemble dele também auxilia na detecção de anomalias de vários tipos, como é o caso desse dataset.
+\subsubsection{Espaço de Busca} a tunagem foi feita utilizando o tradicional método de grid search, testando todas as combinações dos parâmetros possíveis detalhados na tabela. 
+\begin{table}[ht]
+\centering
+\caption{Espaço de busca dos hiperparâmetros utilizados na tunagem do modelo Isolation Forest.}
+\label{tab:isoforest_search_space}
+\begin{tabular}{ll}
+\hline
+\textbf{Categoria} & \textbf{Hiperparâmetro e valores considerados} \\
+\hline
+\multirow{2}{*}{Janelamento} 
+&(\texttt{new\_window\_size}): \{30, 60\} \\
+& (\texttt{window\_overlap}): \{0, 15\} \\
+\hline
+\multirow{3}{*}{Isolation Forest}
+& (\texttt{n\_estimators}): \{50, 100, 150, 200, 250, 300\} \\
+&(\texttt{max\_samples}): \{\texttt{auto}, 0.25, 0.5, 0.75\} \\
+& (\texttt{contamination}): \{\texttt{auto}, 0.01, 0.05, 0.1\} \\
+\hline
+\end{tabular}
+\end{table}
+\subsubsection{Hiperparâmetros Selecionados} para a janela, o tamanho e o overlap foram 60 e 15, respectivamente. No modelo, os melhores parâmetros foram 50 àrvores, 0.75 fração de amostras por árvore e taxa de contaminação automática ('auto').
+\subsection{Autoencoder Convolucional}
+\subsubsection{Conceitos Básicos} 
+Autoencoders são modelos de aprendizado não supervisionado baseados em redes neurais artificiais cujo objetivo é aprender uma representação compacta dos dados por meio da reconstrução da entrada. Formalmente, um autoencoder é composto por duas funções principais: um codificador, que projeta os dados de entrada em um espaço latente de menor dimensionalidade, e um decodificador, responsável por reconstruir os dados originais a partir dessa representação comprimida. O treinamento é realizado minimizando uma função de perda de reconstrução, tipicamente o erro quadrático médio (MSE), entre a entrada e sua reconstrução.
+
+No caso de Autoencoders Convolucionais 1D, camadas densas são substituídas por camadas convolucionais unidimensionais, que exploram explicitamente a estrutura temporal ou sequencial dos dados. As convoluções 1D aplicam filtros locais ao longo do eixo temporal, permitindo ao modelo capturar padrões de curto alcance, como tendências locais, transições abruptas e correlações temporais entre variáveis sensoriais, auxiliado por operações como pooling e upsampling, permitindo reduzir e recuperar as representações.
+
+Para detecção de anomalias, o autoencoder é treinado exclusivamente com dados considerados normais, aprendendo a reconstruir adequadamente padrões recorrentes do comportamento normal, enquanto apresenta maior erro de reconstrução para amostras divergentes. Assim, o erro de reconstrução passa a ser utilizado como uma métrica contínua de anomalia, permitindo a definição de um limiar para classificação.
 \subsubsection{Justificativa}
-\subsubsection{Espaço de Busca}
-\subsubsection{Hiperparâmetros Selecionados}
-\subsection{Modelo B}
-\subsubsection{Conceitos Básicos}
-\subsubsection{Justificativa}
-\subsubsection{Espaço de Busca}
-\subsubsection{Hiperparâmetros Selecionados}
-\subsection{Modelo C}
-\subsubsection{Conceitos Básicos}
-\subsubsection{Justificativa}
-\subsubsection{Espaço de Busca}
+A escolha de um Autoencoder Convolucional 1D para este projeto se justifica principalmente pela natureza temporal e multivariada dos dados analisados. Diferentemente de métodos baseados apenas em distribuição estatística ou isolamento geométrico, autoencoders convolucionais são capazes de aprender relações não lineares complexas entre múltiplos sensores ao longo do tempo, sem a necessidade de rótulos explícitos. Além disso, o uso de convoluções 1D confere ao modelo invariância local e capacidade de generalização, algo muito valioso em ambientes que podem ter ruído.
+
+É um modelo bastante robusto, baseado em aprendizagem profunda, capaz de modelar relações complexas e altamente não-lineares.  
+
+Por fim, a abordagem baseada em erro de reconstrução permite uma separação clara entre dados normais e anômalos, como evidenciado pelos resultados experimentais obtidos neste trabalho, nos quais as anomalias apresentaram erros de reconstrução significativamente superiores aos observados em dados normais. Essa característica torna o Autoencoder Convolucional uma ferramenta eficaz e robusta para detecção de anomalias em séries temporais multivariadas.
+\subsubsection{Espaço de Busca} Foi feito um grid search para tunagem de hiperparâmetros. Antes da tunagem propriamente dita, diversas arquiteturas foram analisadas manualmente para delimitar nosso espaço de busca, evitando uma grid search muito extensa e demorada, testando configurações mais complexas e com mais camadas, chegando até a 64 filtros. No entanto, elas apresentaram resultados semelhantes a arquiteturas mais simples de cerca de 8 filtros. Para evitar overfitting e custo computacional elevado, optamos pelos parâmetros abaixo.
+\begin{table}[ht]
+\centering
+\caption{Espaço de busca dos hiperparâmetros utilizados na tunagem do Autoencoder Convolucional 1D.}
+\label{tab:ae_search_space}
+\begin{tabular}{ll}
+\hline
+\textbf{Categoria} & \textbf{Hiperparâmetro e valores considerados} \\
+\hline
+\multirow{5}{*}{Autoencoder Convolucional 1D}
+& (\texttt{filters}): \{\{8,8\}, \{8,6\}, \{12,8\}\} \\
+& (\texttt{kernel\_sizes}): \{\{3,3\}, \{5,3\}\} \\
+& (\texttt{latent\_channels}): \{4, 8\} \\
+& (\texttt{batch\_size}): \{64\} \\
+& (\texttt{epochs}): \{60\} \\
+& (\texttt{lr}): \{$10^{-3}$\} \\
+& (\texttt{patience}): \{5\} \\
+& (\texttt{percentile}): \{95.0, 97.5, 99\} \\
+\hline
+\end{tabular}
+\end{table}
+
 \subsubsection{Hiperparâmetros Selecionados}
 
 \section{Análise e Comparação de Resultados}
 Deverá conter as métricas que foram utilizadas para a análise juntamente com revisão de conceito e justificativas. É fundamental comparar os resultados obtidos entre os diferentes modelos treinados. Além disso, é interessante utilizar ferramentas estatísticas e/ou testes de hipótese quando cabível.
+\begin{table}[ht]
+\centering
+\caption{Resultados de desempenho do modelo Gaussian Mixture Model (GMM) no conjunto de teste.}
+\label{tab:gmm_results}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Métrica} & \textbf{Valor} \\
+\hline
+Acurácia (Accuracy) & 0.8256 \\
+Precisão (Anomalia como positiva) & 0.1899 \\
+Revocação (Recall – Anomalia) & 1.0000 \\
+F1-score (Anomalia) & 0.3192 \\
+ROC AUC & 1.0000 \\
+PR AUC (Average Precision) & 1.0000 \\
+Média de log-verossimilhança (normal) & -1672.9433 \\
+Média de log-verossimilhança (anômalo) & -12554031.9700 \\
+\hline
+\end{tabular}
+\end{table}
+\begin{table}[ht]
+\centering
+\caption{Matriz de confusão do modelo Gaussian Mixture Model (GMM) no conjunto de teste.}
+\label{tab:gmm_confusion}
+\begin{tabular}{|c|c|c|}
+\hline
+\multirow{2}{*}{\textbf{Classe Real}} & \multicolumn{2}{c|}{\textbf{Classe Predita}} \\
+\cline{2-3}
+ & \textbf{Anomalia} & \textbf{Normal} \\
+\hline
+\textbf{Anomalia} & 166 & 0 \\
+\hline
+\textbf{Normal} & 708 & 3186 \\
+\hline
+\end{tabular}
+\end{table}
+
+O Gaussian Mixture Model (GMM) alcançou recall igual a 1,0, detectando todas as anomalias presentes no conjunto de teste, o que evidencia elevada sensibilidade. No entanto, essa capacidade foi acompanhada por um número expressivo de falsos positivos, refletido em uma precisão de aproximadamente 0,19 e em um F1-score de cerca de 0,32, ainda que superior ao obtido pelo Isolation Forest. Apesar desse desempenho binário moderado, as métricas baseadas em ranqueamento revelam um cenário significativamente mais favorável: tanto a ROC AUC quanto a PR AUC atingiram o valor máximo (1,0). Essa discrepância indica que o GMM foi capaz de separar perfeitamente amostras normais e anômalas no espaço de escores contínuos (log-verossimilhança), mas que o limiar adotado para a decisão final não foi ótimo. Tal interpretação é corroborada pela diferença extrema observada entre as log-verossimilhanças médias das amostras normais e anômalas, sugerindo que as anomalias apresentam padrões estatísticos profundamente incompatíveis com a distribuição aprendida a partir dos dados normais.
+
+A escolha do número de componentes igual a um para o melhor GMM reforça essa interpretação. Um modelo unimodal assume que os dados normais podem ser adequadamente descritos por uma única distribuição Gaussiana, tratando desvios significativos como anômalos. Nesse contexto, a excelente separação observada nos scores sugere que o conjunto de dados normal é relativamente homogêneo, enquanto as anomalias representam desvios extremos, o que favorece abordagens baseadas em densidade. Ainda assim, a taxa de falsos positivos indica a necessidade de uma estratégia de calibração de limiar mais criteriosa, por exemplo, baseada na maximização do F1-score ou em restrições de precisão mínima no conjunto de validação.
+
+\begin{table}[ht]
+\centering
+\caption{Resultados de desempenho do modelo Isolation Forest no conjunto de teste.}
+\label{tab:isoforest_results}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Métrica} & \textbf{Valor} \\
+\hline
+Acurácia (Accuracy) & 0.8579 \\
+Precisão (Anomalia como positiva) & 0.1487 \\
+Recall – Anomalia & 0.5241 \\
+F1-score (Anomalia) & 0.2317 \\
+ROC AUC & 0.7745 \\
+PR AUC (Average Precision) & 0.3212 \\
+\hline
+\end{tabular}
+\end{table}
+\begin{table}[ht]
+\centering
+\caption{Matriz de confusão do modelo Isolation Forest no conjunto de teste.}
+\label{tab:isoforest_confusion}
+\begin{tabular}{|c|c|c|}
+\hline
+\multirow{2}{*}{\textbf{Classe Real}} & \multicolumn{2}{c|}{\textbf{Classe Predita}} \\
+\cline{2-3}
+ & \textbf{Anomalia} & \textbf{Normal} \\
+\hline
+\textbf{Anomalia} & 87 & 79 \\
+\hline
+\textbf{Normal} & 498 & 3396 \\
+\hline
+\end{tabular}
+\end{table}
+
+O Isolation Forest apresentou acurácia global de aproximadamente 85,8\%, valor influenciado principalmente pelo forte desbalanceamento entre amostras normais e anômalas. Apesar dessa acurácia relativamente elevada, o modelo obteve baixa precisão para a classe anômala (cerca de 0,15), indicando que a maioria das amostras sinalizadas como anômalas corresponde, na realidade, a padrões normais. Em contrapartida, o recall de aproximadamente 0,52 sugere que o modelo foi capaz de identificar pouco mais da metade das anomalias reais presentes no conjunto de teste. Esse comportamento resulta em um F1-score reduzido (cerca de 0,23), evidenciando um compromisso desfavorável entre sensibilidade e precisão. A métrica ROC AUC de 0,77 indica que, embora o modelo possua capacidade razoável de ranqueamento entre padrões normais e anômalos, sua fronteira de decisão não é suficientemente discriminativa para fornecer decisões binárias confiáveis sem uma calibração adicional do limiar de decisão. Somado à isso, o isolation forest foi o único modelo que classificou algumas anomalias como normais, algo que seria bastante problemático no ambiente de produção.
 
 \section{Conclusão e Discussão}
 Explicar os principais achados ao longo do trabalho bem como vantagens e limitações de métodos e/ou algoritmos selecionados. Além disso, apresentar principais \textit{insights} extraídos e potenciais trabalhos futuros.
@@ -832,39 +916,10 @@ No Alg. \ref{alg:cap} é apresentado um exemplo de algoritmo.
 % set second argument of \begin to the number of references
 % (used to reserve space for the reference number labels box)
 
-\begin{thebibliography}{9}
-
-\bibitem{casper_acm}
-H.~Kayan, R.~Heartfield, O.~Rana, P.~Burnap, and C.~Perera,
-``CASPER: Context-Aware IoT Anomaly Detection System for Industrial Robotic Arms,''
-\emph{ACM Transactions on Internet of Things},
-vol.~5, no.~3, art.~18, Aug.~2024, doi: 10.1145/3670414.
-
-\bibitem{percom_realtime}
-H.~Kayan, R.~Heartfield, O.~Rana, P.~Burnap, and C.~Perera,
-``Real-Time Anomaly Detection for Industrial Robotic Arms Using Edge Computing,''
-\emph{2023 IEEE International Conference on Pervasive Computing and Communications Workshops (PerCom Workshops)},
-2023.
-
-\bibitem{review_timeseries}
-A.~Blázquez-García, M.~S.~Del Aguila, I.~López, P.~López, and F.~Sánchez,
-``A review on outlier/anomaly detection in time series data,''
-\emph{ACM Computing Surveys},
-vol.~54, no.~3, pp.~1--33, 2021.
-
-\bibitem{mahalanobis_svdd}
-Y.~Yang et al.,
-``Unsupervised Anomaly Detection for Autonomous Robots via Mahalanobis SVDD with Audio-IMU Fusion,''
-\emph{arXiv preprint arXiv:2505.05811},
-2025.
-
-\bibitem{chirayil_anomaly}
-S.~Chirayil Nandakumar et al.,
-``Anomaly detection methods in autonomous robotic missions,''
-\emph{Sensors},
-vol.~24, no.~4, p.~1330, 2024.
-\bibitem{windows}
-Keogh, E., Lin, J. Clustering of time-series subsequences is meaningless: implications for previous and future research. \emp{Knowl Inf Syst 8}, 154–177 (2005).
+\begin{thebibliography}{1}
+\bibitem{IEEEhowto:kopka}
+H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
+  0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
 
 \end{thebibliography}
 
