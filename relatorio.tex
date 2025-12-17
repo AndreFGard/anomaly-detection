@@ -448,9 +448,9 @@ Hitting Platform & 14.967 & 0.3043 \\
 Hitting Arm & 11.924 & 0.2424 \\
 Earthquake & 11.409 & 0.2320 \\
 Extra Weight & 10.885 & 0.2213
+\hline
 \end{tabular}
 \end{table}
-
 \subsubsection{Análise de Duplicatas, Valores Faltantes e \textit{Outliers}}
 A integridade dos dados foi avaliada sob três perspectivas: redundância de registros, continuidade temporal e presença de valores extremos.
 
@@ -471,7 +471,105 @@ A análise de distribuição, por meior de Boxplots e Histogramas, detectou uma 
 Para mitigar o impacto desses valores extremos, na normalização dos dados mais a frente, substituiu-se o \textit{StandardScaler} que é um \textit{scaler} sensível à média e desvio padrão, pelo \textbf{\textit{RobustScaler}}, pois ele utiliza a mediana e o intervalo interquartil (IQR), garantindo que os picos de colisão permaneçam destacados na escala transformada, preservando a assinatura da anomalia para o modelo. A normalização foi feita com o \textit{fit} dos dados normais \textit{resampled} e transformação tanto dos dados normais quanto dos anômalos \textit{resampled} com a concatenação dos cenários de falha.
 
 \subsubsection{Análise Univariada} \label{subsec:analise-univariada}
-Executar análises entre atributos e alvo de forma univariada com descrição estatística e visualizações de apoio.
+Para determinar a sensibilidade individual de cada sensor aos diferentes modos de falha, conduziu-se uma análise estatística univariada comparativa entre a distribuição dos dados no estado Normal e em cada cenário de anomalia. O objetivo foi quantificar o poder discriminatório de cada eixo do IMU, buscando compreender como a distribuição de cada sensor se comporta diante da mudança para um estado de falha e validar a seleção de \textit{features} para a modelagem.
+
+A divergência entre as distribuições foi avaliada utilizando duas métricas complementares:
+
+\begin{itemize}
+    \item \textbf{Teste Kolmogorov-Smirnov (KS-Statistic)} 
+    \item \textbf{Razão de Variância ($\sigma^2_{ratio}$)}
+\end{itemize}
+
+
+As Tabelas e Figuras abaixo resumem os sensores mais críticos identificados para cada cenário.
+
+\begin{table}[h]
+\centering
+\caption{Hitting Platform}
+\label{tab:stats-hitting-platform}
+\begin{tabular}{lccc}
+\hline
+\multicolumn{1}{c}{\textbf{Sensor}} & \textbf{KS Statistic} & \textbf{Variance Ratio} \\ \hline
+accZ & 0.721 & 3.254 \\
+magZ & 0.292 & 1.022 \\
+accX & 0.242 & 1.032 \\
+magY & 0.152 & 1.002 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\linewidth]{imagens/hitting_platform_accZ.png}
+\end{figure}
+
+Nas falhas de \textit{Hitting Platform}, o acelerômetro vertical (\texttt{accZ}) consolidou-se como o indicador primário de anomalia, apresentando um KS-Statistic de 0,72 e um aumento de mais de 3 vezes na variância do sinal. Este comportamento reflete a natureza física do evento, um impacto abrupto contra a superfície rígida tende a gerar desacelerações impulsivas de alta magnitude que não alteram significativamente a média global do movimento, mas expandem drasticamente a dispersão dos dados momentâneos.
+
+\begin{table}[h]
+\centering
+\caption{Hitting Arm}
+\label{tab:stats-hitting-arm}
+\begin{tabular}{lccc}
+\hline
+\multicolumn{1}{c}{\textbf{Sensor}} & \textbf{KS Statistic} & \textbf{Variance Ratio} \\ \hline
+accZ & 0.740 & 3.279 \\
+magY & 0.306 & 0.993 \\
+magZ & 0.306 & 1.088 \\
+accX & 0.301 & 1.139 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\linewidth]{imagens/hitting_arm_accZ.png}
+\end{figure}
+
+O cenário de \textit{Hitting Arm} exibiu uma assinatura estatística semelhante à colisão na plataforma, com o \texttt{accZ} liderando a detectabilidade (KS≈0,74). Contudo, observou-se uma contaminação cruzada mais acentuada nos eixos laterais e nos magnetômetros (ex: \texttt{magY} e \texttt{accX} com KS≈0,30), sugerindo que o choque interno induz vibrações multidirecionais e distorções na orientação magnética momentânea superiores às de um impacto simples.
+
+\begin{table}[h]
+\centering
+\caption{Earthquake}
+\label{tab:stats-earthquake}
+\begin{tabular}{lccc}
+\hline
+\multicolumn{1}{c}{\textbf{Sensor}} & \textbf{KS Statistic} & \textbf{Variance Ratio} \\ \hline
+accZ & 0.491 & 22.402 \\
+magX & 0.394 & 0.937 \\
+magY & 0.303 & 0.972 \\
+magZ & 0.274 & 0.946 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\linewidth]{imagens/earthquake_accZ.png}
+\end{figure}
+
+A anomalia de \textit{Earthquake} revelou o caso mais extremo de alteração. Embora o KS-Statistic do \texttt{accZ} seja moderado (0,49), indicando que as médias das distribuições não se afastaram radicalmente, a Razão de Variância atingiu um valor crítico de 22,4. Isso indica que a falha não se manifesta por deslocamento de trajetória, mas pela injeção massiva de ruído de alta frequência no sistema, transformando a distribuição normal em uma curva extremamente achatada e espalhada. \\
+
+\begin{table}[h]
+\centering
+\caption{Extra Weight}
+\label{tab:stats-extra-weight}
+\begin{tabular}{lccc}
+\hline
+\multicolumn{1}{c}{\textbf{Sensor}} & \textbf{KS Statistic} & \textbf{Variance Ratio} \\ \hline
+accZ & 0.752 & 0.776 \\
+magX & 0.400 & 0.927 \\
+magY & 0.314 & 0.968 \\
+magZ & 0.281 & 0.943 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.6\linewidth]{imagens/extra_weight_accZ.png}
+\end{figure}
+
+\\Diferentemente dos cenários de impacto e vibração, a falha por \textit{Extra Weight} apresentou um fenômeno de amortecimento dinâmico. O sensor \texttt{accZ} manteve a maior separabilidade estatística (KS≈0,75), mas a variância do sinal sofreu uma redução. Fisicamente, isso sugere que o esforço adicional para sustentar a carga limitou a liberdade de oscilação natural do braço (efeito de rigidez), criando uma assinatura de falha caracterizada pela tensão e menor dispersão em torno da trajetória nominal, oposta ao comportamento das colisões.
 
 \subsubsection{Análise Bivariada}
 
