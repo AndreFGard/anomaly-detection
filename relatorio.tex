@@ -460,16 +460,11 @@ Uma varredura inicial no conjunto de dados brutos não identificou linhas duplic
 \paragraph{Análise de Continuidade Temporal}
 Embora não houvesse \textit{NaNs} no arquivo original, a análise do intervalo entre amostras revelou um problema crítico de integridade temporal. A frequência nominal de coleta, era de 10 Hz (com \textit{Sampling Rate} de 100 ms). No entanto, observou-se um \textit{Jitter} (desvio padrão do intervalo de tempo) relevante de aproximadamente 22 ms, com 429 \textit{Gaps} Temporais significativos variando entre 2 ms e 342 ms, onde essa quantidade de perda de pacotes foi considerada quando o valor do \textit{Gap} foi maior que 2x a média, sendo categorizada como quebra de continuidade.
 
-Para padronizar a frequência e facilitar o janelamento das séries temporais nas etapas seguintes, foi utilizada a técnica de \textit{Resampling}, impondo uma grade temporal rígida de 100 ms. Nesse contexto, a irregularidade original foi exposta sob a forma de \textit{Gaps} temporais. No conjunto de dados Normal, o alinhamento gerou cerca de 44.766 lacunas onde não havia dados registrados no timestamp esperado.
+Para padronizar a frequência e facilitar o janelamento das séries temporais nas etapas seguintes, foi utilizada a técnica de \textit{Resampling}, impondo uma grade temporal rígida de 100 ms, conforme detalhado na seção de Pré-Processamento dos Dados. Nesse contexto, a irregularidade original foi exposta sob a forma de \textit{Gaps} temporais. No conjunto de dados Normal, o alinhamento gerou cerca de 44.766 lacunas onde não havia dados registrados no timestamp esperado.
 
-Para corrigir os problemas mencionados anteriormente sem descartar dados, optou-se pela \textbf{interpolação linear} dos valores faltantes gerados pelo \textit{Resampling}. Essa abordagem preservou a tendência do movimento entre os pontos conhecidos, restaurando a continuidade necessária para a extração de \textit{features} de janela deslizante.
-
-Para os conjuntos de dados anômalos, a etapa de regularização temporal com \textit{Resampling} e Interpolação foi aplicada de forma iterativa e independente para cada cenário de falha em detrimento a aplicação direta sobre o conjunto anômalo completo. Essa abordagem foi necessária para prevenir as descontinuidades temporais, visto que os experimentos de falha foram registrados em contextos diferentes e com \textit{Gaps} de minutos a horas entre si e a imposição de uma grade temporal contínua de 10Hz no dataset completo forçaria a criação de milhares de linhas vazias para preencher esses intervalos e a interpolação linear geraria dados sintéticos falsos, o que tornaria inviável alimentar o modelo com esses dados, mesmo com etapas subsequentes de pré-processamento.
 
 \paragraph{Análise de \textit{Outliers}}
-A análise de distribuição, por meior de Boxplots e Histogramas, detectou uma quantidade massiva de \textit{outliers} estatísticos, especialmente nos eixos do acelerômetro. Nos dados de colisão (\textit{Hitting Arm}), a curtose do eixo Z atingiu valores extremos ($>100$), com picos de aceleração de até 10g, muito superiores à faixa média normal de operação ($\pm 1g$). Entretenato, diferente de problemas de regressão clássicos, onde \textit{outliers} são ruídos a serem removidos, neste projeto eles constituem o próprio \textbf{sinal de interesse} (a falha mecânica). Consequentemente, optou-se por \textbf{não remover} os \textit{outliers}. 
-Para mitigar o impacto desses valores extremos, na normalização dos dados mais a frente, substituiu-se o \textit{StandardScaler} que é um \textit{scaler} sensível à média e desvio padrão, pelo \textbf{\textit{RobustScaler}}, pois ele utiliza a mediana e o intervalo interquartil (IQR), garantindo que os picos de colisão permaneçam destacados na escala transformada, preservando a assinatura da anomalia para o modelo. A normalização foi feita com o \textit{fit} dos dados normais \textit{resampled} e transformação tanto dos dados normais quanto dos anômalos \textit{resampled} com a concatenação dos cenários de falha.
-
+A análise de distribuição, por meior de Boxplots e Histogramas, detectou uma quantidade massiva de \textit{outliers} estatísticos, especialmente nos eixos do acelerômetro. Nos dados de colisão (\textit{Hitting Arm}), a curtose do eixo Z atingiu valores extremos ($>100$), com picos de aceleração de até 10g, muito superiores à faixa média normal de operação ($\pm 1g$). Entretenato, diferente de problemas de regressão clássicos, onde \textit{outliers} são ruídos a serem removidos, neste projeto eles constituem o próprio \textbf{sinal de interesse} (a falha mecânica).
 \subsubsection{Análise Univariada} \label{subsec:analise-univariada}
 Para determinar a sensibilidade individual de cada sensor aos diferentes modos de falha, conduziu-se uma análise estatística univariada comparativa entre a distribuição dos dados no estado Normal e em cada cenário de anomalia. O objetivo foi quantificar o poder discriminatório de cada eixo do IMU, buscando compreender como a distribuição de cada sensor se comporta diante da mudança para um estado de falha e validar a seleção de \textit{features} para a modelagem.
 
@@ -654,19 +649,23 @@ Por fim, aplicou-se o K-Means para identificar grupos de interesse no espaço fo
 Apresentar ações referentes ao pré-processamento de dados a exemplo de:
 
 \subsubsection{Tratamento de Valores Faltantes}
-Em caso de valores faltantes, descrever o tratamento executado para sanar os problemas com justificativas bem fundamentadas.
 
-\subsubsection{Tratamento de Outliers}
-Em caso de \textit{outliers}, apresentar o tratamento executado com devidas justificativas.
+Para corrigir os problemas de  \textit{timestamps} irregularmente espaçadas e amostras faltantes, sem descartar dados, optou-se pela \textbf{interpolação linear} dos valores faltantes gerados pelo \textit{Resampling}. Essa abordagem preservou a tendência do movimento entre os pontos conhecidos, restaurando a continuidade necessária para a extração de \textit{features} de janela deslizante.
+
+Para os conjuntos de dados anômalos, a etapa de regularização temporal com \textit{Resampling} e Interpolação foi aplicada de forma iterativa e independente para cada cenário de falha, ao invés da aplicação direta sobre o conjunto anômalo completo. Essa abordagem foi necessária para prevenir as descontinuidades temporais, visto que os experimentos de falha foram registrados em contextos diferentes e com \textit{Gaps} de minutos a horas entre si e a imposição de uma grade temporal contínua de 10Hz no dataset completo forçaria a criação de milhares de linhas vazias para preencher esses intervalos e a interpolação linear geraria dados sintéticos falsos, o que tornaria inviável alimentar o modelo com esses dados, mesmo com etapas subsequentes de pré-processamento.
+
+
+\subsubsection{Tratamento de Outliers e Feature Scaling}
+Conforme detalhado anteriormente, os \textit{outliers} identificados representam uma parte importante do problema e representam medições verossímeis. Consequentemente, optou-se por \textbf{não removê-los}. No entanto, tendo em mente a fonte dos dados e a natureza dos sensores, foi necessário aplicar um filtro para reduzir o ruído dos sinais, sendo utilizado o Savitzky-Golay, que ajusta polinômios localmente, por sua capacidade de preservar melhor a forma e pico dos sinais que outros baseados em médias rolantes.
+Adiconalmente, para mitigar o impacto desses valores extremos do sensores na normalização dos dados, substituiu-se o \textit{StandardScaler} (sensível à média/desvio padrão) pelo \textbf{\textit{RobustScaler}}, sendo este ajustado somente ao conjunto de testes dos dados normais e posteriormente usado para transformar os outros conjuntos. Este escalonador utiliza a mediana e o intervalo interquartil (IQR), garantindo que os picos de colisão permaneçam destacados na escala transformada, preservando a assinatura da anomalia para o modelo. 
+
 
 \subsubsection{Detecção e Tratamento de Duplicadas}
-Avaliar se há presença de duplicadas no dataset utilizado e tratá-las de acordo.
+Não havia duplicadas no \textit{dataset}, devido ao processo de geração deste ~\cite{casper}. 
 
-\subsubsection{Feature Scaling}
-Utilizar ferramentas de normalização como StandardScaler ou MinMaxScaler para normalizar os atributos.
 
 \subsubsection{Encoding de Variáveis Categóricas}
-Utilizar ferramentas adequadas para tratamento de variáveis. Indicar qual técnica foi utilizada e a motivação.
+Os dados não contém qualquer variável categórica, sendo desnecessárias estratégias de \textit{encoding}.
 
 \subsection{Divisão dos Dados}
 Justificar e apresentar a divisão de dados entre Treino, Validação e Teste com justificativas a respeito da técnica utilizada.
@@ -850,7 +849,11 @@ No Alg. \ref{alg:cap} é apresentado um exemplo de algoritmo.
 \bibitem{IEEEhowto:kopka}
 H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
   0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
-
+\bibitem{casper}
+H.~Kayan, R.~Heartfield, O.~Rana, P.~Burnap, and C.~Perera,
+``CASPER: Context-Aware IoT Anomaly Detection System for Industrial Robotic Arms,''
+\emph{ACM Transactions on Internet of Things},
+vol.~5, no.~3, art.~18, Aug.~2024, doi: 10.1145/3670414.
 \end{thebibliography}
 
 
