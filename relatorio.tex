@@ -867,7 +867,7 @@ Por fim, a abordagem baseada em erro de reconstrução permite uma separação c
 \end{tabular}
 \end{table}
 
-\subsubsection{Hiperparâmetros Selecionados}
+\subsubsection{Hiperparâmetros Selecionados} A janela tem tamanho 60 com overlap 15. Para o modelo, tem duas camadas convolucionais com 8 e 6 filtros, respectivamente e 5 e 3 de tamanho de kernel, 4 canais no espaço latente e threshold de 99.  
 
 \section{Análise e Comparação de Resultados}
 Deverá conter as métricas que foram utilizadas para a análise juntamente com revisão de conceito e justificativas. É fundamental comparar os resultados obtidos entre os diferentes modelos treinados. Além disso, é interessante utilizar ferramentas estatísticas e/ou testes de hipótese quando cabível.
@@ -947,7 +947,42 @@ PR AUC (Average Precision) & 0.3212 \\
 
 O Isolation Forest apresentou acurácia global de aproximadamente 85,8\%, valor influenciado principalmente pelo forte desbalanceamento entre amostras normais e anômalas. Apesar dessa acurácia relativamente elevada, o modelo obteve baixa precisão para a classe anômala (cerca de 0,15), indicando que a maioria das amostras sinalizadas como anômalas corresponde, na realidade, a padrões normais. Em contrapartida, o recall de aproximadamente 0,52 sugere que o modelo foi capaz de identificar pouco mais da metade das anomalias reais presentes no conjunto de teste. Esse comportamento resulta em um F1-score reduzido (cerca de 0,23), evidenciando um compromisso desfavorável entre sensibilidade e precisão. A métrica ROC AUC de 0,77 indica que, embora o modelo possua capacidade razoável de ranqueamento entre padrões normais e anômalos, sua fronteira de decisão não é suficientemente discriminativa para fornecer decisões binárias confiáveis sem uma calibração adicional do limiar de decisão. Somado à isso, o isolation forest foi o único modelo que classificou algumas anomalias como normais, algo que seria bastante problemático no ambiente de produção.
 
+\begin{table}[ht]
+\centering
+\caption{Resultados do Autoencoder Convolucional no conjunto de teste.}
+\label{tab:autoencoder_results}
+\begin{tabular}{lc}
+\hline
+\textbf{Métrica} & \textbf{Valor} \\
+\hline
+Acurácia & 0.9567 \\
+Precisão (anomalia como positiva) & 0.4854 \\
+Revocação / Recall (anomalia como positiva) & 1.0000 \\
+F1-score (anomalia como positiva) & 0.6535 \\
+ROC AUC & 1.0000 \\
+PR AUC (Average Precision) & 1.0000 \\
+\hline
+\end{tabular}
+\end{table}
+\begin{table}[ht]
+\centering
+\caption{Matriz de confusão do modelo Autoencoder Convolucional no conjunto de teste.}
+\label{tab:isoforest_confusion}
+\begin{tabular}{|c|c|c|}
+\hline
+\multirow{2}{*}{\textbf{Classe Real}} & \multicolumn{2}{c|}{\textbf{Classe Predita}} \\
+\cline{2-3}
+ & \textbf{Anomalia} & \textbf{Normal} \\
+\hline
+\textbf{Anomalia} & 166 & 0 \\
+\hline
+\textbf{Normal} & 176 & 3718 \\
+\hline
+\end{tabular}
+\end{table}
+A Tabela de resultados e a matriz de confusão obtidas para o Autoencoder Convolucional evidenciam um desempenho significativamente superior em comparação aos modelos baseados em métodos estatísticos e de isolamento. No conjunto de teste, o modelo alcançou uma acurácia de 95,67\%, a maior de todas, indicando elevada capacidade global de classificação. Além disso, o recall máximo de 1 e a matriz de confusão demonstra a ausência de falsos negativos. Tal resultado é particularmente relevante nos cenários industriais, como discutido.
 
+Em contrapartida, observa-se a presença de 176 falsos positivos, correspondentes a amostras normais classificadas incorretamente como anomalias. Esse fenômeno se reflete em uma precisão para a classe anômala de 48,54\%, indicando que aproximadamente metade das detecções de anomalia corresponde, a padrões normais. O equilíbrio entre precisão e recall é sintetizado pelo F1-score de 0,6535 para a classe anômala, valor substancialmente superior aos observados nos modelos Isolation Forest e GMM. Esse resultado indica que o Autoencoder Convolucional alcança uma relação mais favorável entre sensibilidade e seletividade, mesmo sob forte desbalanceamento dos dados. Os valores máximos obtidos para ROC AUC e Average Precision (ambos iguais a 1,00) evidenciam uma separação praticamente perfeita entre padrões normais e anômalos em termos do erro de reconstrução.
 \section{Conclusão e Discussão}
 
 O GMM alcançou ROC AUC e PR AUC perfeitos (1.0), indicando excelente separabilidade entre dados normais e anômalos. Porém, sua precisão foi baixa (0.19), revelando problema de calibração de limiar. A escolha de um único componente sugere que o comportamento normal é homogêneo e as anomalias representam desvios estatísticos claros.
