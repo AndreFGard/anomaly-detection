@@ -325,29 +325,29 @@
 % author names and affiliations
 % use a multiple column layout for up to three different
 % affiliations
-\author{\IEEEauthorblockN{1\textsuperscript{st} Andre}
+\author{\IEEEauthorblockN{1\textsuperscript{st} Andre Saghaard}
 \IEEEauthorblockA{\textit{Centro de Informática - UFPE} \\
 %\textit{}\\
 Recife, Brazil \\
-@cin.ufpe.br}
+afs15@cin.ufpe.br}
 \and
-\IEEEauthorblockN{2\textsuperscript{nd} Bianca }
+\IEEEauthorblockN{2\textsuperscript{nd} Bianca Paes}
 \IEEEauthorblockA{\textit{Centro de Informática - UFPE} \\
 %\textit{name of organization (of Aff.)}\\
 Recife, Brazil \\
-@cin.ufpe.br}
+bpas@cin.ufpe.br}
 \and
-\IEEEauthorblockN{3\textsuperscript{rd} Caio }
+\IEEEauthorblockN{3\textsuperscript{rd} Caio Nascimento}
 \IEEEauthorblockA{\textit{Centro de Informática - UFPE} \\
 %\textit{name of organization (of Aff.)}\\
 Recife, Brazil \\
-@cin.ufpe.br}
+cns@cin.ufpe.br}
 \and
-\IEEEauthorblockN{4\textsuperscript{rd} Rodrigo}
+\IEEEauthorblockN{4\textsuperscript{rd} Rodrigo Gomes}
 \IEEEauthorblockA{\textit{Centro de Informática - UFPE} \\
 %\textit{name of organization (of Aff.)}\\
 Recife, Brazil \\
-@cin.ufpe.br}
+rgar@cin.ufpe.br}
 }
 
 % conference papers do not typically use \thanks and this command
@@ -685,64 +685,6 @@ Deverá conter as métricas que foram utilizadas para a análise juntamente com 
 \section{Conclusão e Discussão}
 Explicar os principais achados ao longo do trabalho bem como vantagens e limitações de métodos e/ou algoritmos selecionados. Além disso, apresentar principais \textit{insights} extraídos e potenciais trabalhos futuros.
 
-\section*{Material de Apoio}
-% ##################### DICA ########################
-% Tabelas em latex são ruins de serem manipuladas, para isso, existem ferramentas que ajudam a gerar o "código" da tabela com ajuda de uma interface gráfica
-% Exemplo: https://www.tablesgenerator.com/
-% Exemplo: https://tableconvert.com/csv-to-latex
-\begin{table}[h]
-\centering
-\caption{Exemplo de tabela}
-\label{tab:tabela-exemplo}
-\begin{tabular}{llcc}
-\hline
-\multicolumn{1}{c}{\textbf{Trabalhos}} & \textbf{Método} & \textbf{Vantagens} & \textbf{Desvantagens} \\ \hline
-Trabalho A & Método X & A & D \\
-Trabalho B & Método Y & G & J
-\end{tabular}
-\end{table}
-\section{Modelo de ameaça (SE APLICÁVEL)}
-
-Utilizar figuras e/ou algoritmos e/ou equações para descrever os comportamentos da análise. 
-
-% Utilize o comando "\eqref{}" para se referenciar a equações
-Na Eq. \eqref{equacao-da-reta} é apresentado um exemplo de equação com a equação de uma reta.
-
-\begin{equation}
-    y = ax + b
-    \label{equacao-da-reta}
-\end{equation}
-
-Na Fig. \ref{fig: logo-cin} é apresentado um exemplo de figura com a logo do centro de informática.
-
-\begin{figure}[ht]
-	\centering
-	\includegraphics[width=\linewidth]{imagens/logo_cin_ufpe.png}
-        \caption{Logo do centro de informática.}
-        \label{fig: logo-cin}
-\end{figure}
-
-No Alg. \ref{alg:cap} é apresentado um exemplo de algoritmo.
-
-\begin{algorithm}
-\caption{Algoritmo com legenda}\label{alg:cap}
-\begin{algorithmic}
-\Require $n \geq 0$
-\Ensure $y = x^n$
-\State $y \gets 1$
-\State $X \gets x$
-\State $N \gets n$
-\While{$N \neq 0$}
-\If{$N$ is even}
-    \State $X \gets X \times X$
-    \State $N \gets \frac{N}{2}$  \Comment{Exemplo de comentário}
-\ElsIf{$N$ is odd}
-    \State $y \gets y \times X$
-    \State $N \gets N - 1$
-\EndIf
-\EndWhile
-\end{algorithmic}
-\end{algorithm}
 
 % An example of a floating figure using the graphicx package.
 % Note that \label must occur AFTER (or within) \caption.
